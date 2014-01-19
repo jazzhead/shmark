@@ -63,6 +63,10 @@ SHMARK_VERSION="@@VERSION@@"
 
 # == UTILITY FUNCTIONS ==
 
+_shmark_oneline_usage() {
+    echo "shmark [-hV] [-#] [action] [bookmark|category]"
+}
+
 _shmark_help() {
     cat <<-___EndHelp___
 
@@ -70,7 +74,7 @@ NAME
     shmark - Categorized shell directory bookmarking for Bash
 
 SYNOPSIS
-    shmark [-hV] [-#] [ACTION] [BOOKMARK]
+    $(_shmark_oneline_usage)
 
 DESCRIPTION
     Save directory bookmarks and quickly go to any saved directory. Type a
@@ -162,7 +166,7 @@ ___EndHelp___
 
 _shmark_usage() {
     cat <<-___EndUsage___
-Usage: shmark [-hV] [-NUM] [ACTION] [BOOKMARK]
+Usage: $(_shmark_oneline_usage)
 Try 'shmark -h' for more info.
 ___EndUsage___
     return 1
