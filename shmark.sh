@@ -232,14 +232,14 @@ _shmark_cd() {
     # TODO: Update 'last visited' field for directory in bookmark file.
 }
 
-_shmark_save() {
+_shmark_add() {
     # Output line format:  label|directory|creation date|last visited
     local label="$1" || return
     local dir="${PWD/#$HOME/~}"     # Replace home directory with tilde
     local curdate="$(date '+%F %T')"
     _shmark_delete "$dir"        # Delete old bookmark first if one exists
     echo "$1|$dir|$curdate|$curdate" >> "$SHMARK_FILE"
-    echo >&2 "Bookmark saved for '$dir'."
+    echo >&2 "Bookmark added for '$dir'."
 }
 
 _shmark_list() {
@@ -276,7 +276,7 @@ _shmark_dir() {
     _shmark_list
 }
 
-_shmark_unsorted_dir() {
+_shmark_dir_unsorted() {
     cut -d\| -f2 "$SHMARK_FILE"
 }
 
@@ -352,7 +352,7 @@ shmark() {
 
     # Process actions
     case "$action" in
-        c|cd|g|go)  # go (cd) to bookmarked directory
+        cd|go)      # go (cd) to bookmarked directory
             shift
             if [[ $# -eq 0 ]]; then
                 echo >&2 "Error: The 'cd' action requires an argument."
@@ -361,12 +361,12 @@ shmark() {
             _shmark_cd "$1"
             ;;
 
-        s|save)     # save current directory as bookmark
+        add|a)      # add a bookmark for the current directory
             shift
-            _shmark_save "${1:-}" # optional 'label' argument
+            _shmark_add "${1:-}" # 'label' argument optional
             ;;
 
-        l|ls|list)  # show categorized bookmarks list
+        list|ls)    # show categorized bookmarks list
             _shmark_list
             ;;
 
@@ -374,15 +374,15 @@ shmark() {
             _shmark_dir
             ;;
 
-        unsorted_dir) # show unsorted bookmarked directories w/o labels/line #s
-            _shmark_unsorted_dir
+        dir_unsorted) # show unsorted bookmarked directories w/o labels/line #s
+            _shmark_dir_unsorted
             ;;
 
-        p|print)    # show raw bookmark file
+        print|p)    # show raw bookmark file
             _shmark_print
             ;;
 
-        d|delete)   # delete a bookmark
+        del|rm)     # delete a bookmark
             shift
             if [[ $# -eq 0 ]]; then
                 echo >&2 "Error: The 'delete' action requires an argument."
@@ -391,15 +391,15 @@ shmark() {
             _shmark_delete "$1"
             ;;
 
-        u|undo)     # undo the last edit to the bookmarks file
+        undo|u)     # undo the last edit to the bookmarks file
             _shmark_undo
             ;;
 
-        e|edit)     # open bookmarks file in EDITOR
+        edit|e)     # open bookmarks file in EDITOR
             _shmark_edit
             ;;
 
-        chcat)      # Change the category of a bookmark
+        chcat|cc)   # Change the category of a bookmark
             shift
             if [[ $# -eq 2 ]]; then
                 _shmark_chcat "$@"
