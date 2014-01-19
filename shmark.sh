@@ -184,6 +184,16 @@ _shmark_list_index() {
     sed "$1"'q;d' <<< "$(_shmark_dir)"
 }
 
+_shmark_find_line() {
+    local dir
+    if [[ "$1" =~ ^-[0-9]+$ ]]; then
+        dir="$(_shmark_list_index ${1#-})"
+    else
+        dir="$1"
+    fi
+    fgrep -n -m1 "|${dir}|" "$SHMARK_FILE" | cut -d: -f1
+}
+
 # == ACTIONS ==
 
 _shmark_cd() {
@@ -253,7 +263,13 @@ _shmark_print() {
 }
 
 _shmark_delete() {
-    echo >&2 "TODO: ${FUNCNAME}()"
+    local line_num=$(_shmark_find_line "$1")
+    if [[ "$line_num" =~ ^[0-9]+$ ]]; then
+        #echo >&2 "Deleting line $line_num from '$SHMARK_FILE'" # :DEBUG:
+        cp -p ${SHMARK_FILE}{,.bak}
+        printf '%s\n' "${line_num}d" . w | ed -s "$SHMARK_FILE" >/dev/null
+        echo >&2 "Bookmark deleted."
+    fi
 }
 
 _shmark_edit() {
