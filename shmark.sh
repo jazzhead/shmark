@@ -128,6 +128,10 @@ ACTIONS
         bookmark's list position prefixed with a hyphen, e.g., '-2'. The
         list position can be found using the 'shmark list' command.
 
+    u|undo
+        Undo the last edit to the bookmarks file. There is only one level
+        of undo. Running 'undo' again will redo the last edit.
+
     e|edit
         Open the bookmarks file in the default EDITOR.
 
@@ -276,6 +280,13 @@ _shmark_delete() {
     fi
 }
 
+_shmark_undo() {
+    echo >&2 "Undoing last edit to the bookmarks file..."
+    mv -f "${SHMARK_FILE}"{.bak,.tmp} # rename current backup as tmp
+    mv -f "${SHMARK_FILE}"{,.bak}     # rename current file as new backup
+    mv -f "${SHMARK_FILE}"{.tmp,}     # rename tmp file as new current file
+}
+
 _shmark_edit() {
     echo >&2 "TODO: ${FUNCNAME}()"
 }
@@ -360,6 +371,10 @@ shmark() {
                 return
             fi
             _shmark_delete "$1"
+            ;;
+
+        u|undo)     # undo the last edit to the bookmarks file
+            _shmark_undo
             ;;
 
         e|edit)     # open bookmarks file in EDITOR
