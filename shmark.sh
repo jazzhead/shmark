@@ -89,9 +89,12 @@ ACTIONS
         position prefixed with a hyphen, e.g., '-2'. The list position can
         be found using the 'shmark list' command.
 
-    s|save [LABEL]
-        Bookmark the current directory. An optional label/category can be
-        assigned.
+    s|save [CATEGORY]
+        Bookmark the current directory. An optional category can be
+        assigned. If a bookmark for the current directory already exists
+        in the bookmarks file, it will be deleted before the new bookmark
+        is added. This is an easy way to change the category for the
+        bookmark.
 
     l|ls|list
         Show a list of saved bookmarks. This is the default if no argument
@@ -213,10 +216,11 @@ _shmark_cd() {
 _shmark_save() {
     # Output line format:  label|directory|creation date|last visited
     local label="$1" || return
+    local dir="${PWD/#$HOME/~}"     # Replace home directory with tilde
     local curdate="$(date '+%F %T')"
-    # TODO: If directory has already been bookmarked, delete that line before
-    #       adding the new bookmark. <>
-    echo "$1|${PWD/#$HOME/~}|$curdate|$curdate" >> "$SHMARK_FILE"
+    _shmark_delete "$dir"        # Delete old bookmark first if one exists
+    echo "$1|$dir|$curdate|$curdate" >> "$SHMARK_FILE"
+    echo >&2 "Bookmark saved for '$dir'."
 }
 
 _shmark_list() {
