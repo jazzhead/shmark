@@ -104,9 +104,9 @@ ACTIONS
         is assigned after the directories have been sorted by category.)
 
     dir
-        Show just the bookmarked directories without the labels/categories
-        or list index numbers. This action is mainly used internally, but
-        it might be useful for passing to external commands. Note that the
+        Show just the bookmarked directories without the categories or
+        list index numbers. This action is mainly used internally, but it
+        might be useful for passing to external commands. Note that the
         directories are still sorted by category the same way they are
         with the 'list' action. If unsorted directies are needed, use the
         'unsorted_dir' action instead.
@@ -135,14 +135,14 @@ ACTIONS
     e|edit
         Open the bookmarks file in the default EDITOR.
 
-    rl|relabel LABEL [BOOKMARK|-#]
-        Change the label (category) of the specified bookmark. The
-        directory can be specified by its full path (available with tab
-        completion from a partially typed path) or by specifying the
-        bookmark's list position prefixed with a hyphen, e.g., '-2'. The
-        list position can be found using the 'shmark list' command.
+    chcat CATEGORY [BOOKMARK|-#]
+        Change the category of the specified bookmark. The directory can
+        be specified by its full path (available with tab completion from
+        a partially typed path) or by specifying the bookmark's list
+        position prefixed with a hyphen, e.g., '-2'. The list position can
+        be found using the 'shmark list' command.
 
-        Tab completion can also be used for the LABEL.
+        Tab completion can also be used for the CATEGORY.
 
 OPTIONS
     -n              No line numbers. Don't output line numbers for lists.
@@ -291,7 +291,7 @@ _shmark_edit() {
     echo >&2 "TODO: ${FUNCNAME}()"
 }
 
-_shmark_relabel() {
+_shmark_chcat() {
     echo >&2 "TODO: ${FUNCNAME}()"
 }
 
@@ -381,12 +381,12 @@ shmark() {
             _shmark_edit
             ;;
 
-        rl|relabel) # Change the label (category) of a bookmark
+        chcat)      # Change the category of a bookmark
             shift
             if [[ $# -eq 2 ]]; then
-                _shmark_relabel "$@"
+                _shmark_chcat "$@"
             else
-                echo >&2 "Error: The 'relabel' action requires two arguments."
+                echo >&2 "Error: The 'chcat' action requires two arguments."
                 return
             fi
             ;;
