@@ -77,87 +77,90 @@ SYNOPSIS
     $(_shmark_oneline_usage)
 
 DESCRIPTION
-    Save directory bookmarks and quickly go to any saved directory. Type a
-    partial path name followed by tab and shmark will complete the path
-    for any saved bookmarks.
+    Save directory bookmarks and quickly go to any bookmarked directory.
+    Type a partial path name then hit the tab key and shmark will
+    complete the path for any bookmark.
 
-    The bookmarks can be assigned a category when saving so that bookmarks
-    are presented in groups when listing. Some examples of category names
-    might be "@CURRENT", "@NEXT" or "@PENDING" for GTD-style categories,
-    and "RECENT" or "MISC" for others.
+    The bookmarks can be assigned a category when adding so that
+    bookmarks are presented in groups when listing. Some examples of
+    category names might be "@CURRENT", "@NEXT" or "@PENDING" for
+    GTD-style categories, and "RECENT" or "MISC" for others.
 
-    A default action (see the list of actions below) can be declared by setting
-    a SHMARK_DEFAULT_ACTION environment variable, usually in .bash_profile.
-    If a default is declared, it will be run when the function is called with
-    no arguments. An example of declaring a default action:
+    A default action (see the list of actions below) can be declared by
+    setting a SHMARK_DEFAULT_ACTION environment variable, usually in
+    .bash_profile. If a default is declared, it will be run when shmark
+    is called with no arguments. An example of declaring a default
+    action:
 
         export SHMARK_DEFAULT_ACTION=list
 
 ACTIONS
-    c|cd|g|go [BOOKMARK|-#]
+    cd|go bookmark
+    cd|go -#
         Go (cd) to the specified bookmarked directory. The directory can
-        be specified by its full path (available with tab completion from
-        a partially typed path) or by specifying the bookmark's list
-        position prefixed with a hyphen, e.g., '-2'. The list position can
-        be found using the 'shmark list' command.
+        be specified by its full path (available with tab completion
+        from a partially typed path) or by specifying the bookmark's
+        list position prefixed with a hyphen, e.g., '-2'. The list
+        position can be found using the 'list' action
 
-    s|save [CATEGORY]
+    add|a [category]
         Bookmark the current directory. An optional category can be
         assigned. If a bookmark for the current directory already exists
-        in the bookmarks file, it will be deleted before the new bookmark
-        is added. This is an easy way to change the category for the
-        bookmark.
+        in the bookmarks file, it will be deleted before the new
+        bookmark is added. This is an easy way to change the category
+        for the bookmark.
 
-    l|ls|list
-        Show a list of saved bookmarks. This is the default if no argument
-        is given. Bookmarks are listed by category and are prefixed by
-        their list index number. (Note that the list index number is not
-        the same as the line number in the actual file. The index number
-        is assigned after the directories have been sorted by category.)
+    list|ls
+        Show a list of saved bookmarks. Bookmarks are listed by category
+        and are prefixed by their list index number. (Note that the list
+        index number is not the same as the line number in the actual
+        file. The index number is assigned after the directories have
+        been sorted by category.)
 
     dir
         Show just the bookmarked directories without the categories or
-        list index numbers. This action is mainly used internally, but it
-        might be useful for passing to external commands. Note that the
-        directories are still sorted by category the same way they are
-        with the 'list' action. If unsorted directies are needed, use the
-        'unsorted_dir' action instead.
+        list index numbers. This action is mainly used internally, but
+        it might be useful for passing to external commands. Note that
+        the directories are still sorted by category the same way they
+        are with the 'list' action. If unsorted directories are needed,
+        use the 'dir_unsorted' action instead.
 
-    unsorted_dir
+    dir_unsorted
         Similar to the 'dir' action except that the directories are not
-        sorted by category and are instead listed in the same order as in
-        the bookmarks file. Like the 'dir' action, this action is mainly
-        available for use with any external command that might want the
-        data.
+        sorted by category and are instead listed in the same order as
+        in the bookmarks file. Like the 'dir' action, this action is
+        mainly available for use with any external command that might
+        want the data.
 
-    p|print
+    print|p
         Print the raw, unformatted bookmark file.
 
-    d|delete [BOOKMARK|-#]
+    del|rm bookmark
+    del|rm -#
         Delete the specified directory bookmark from the bookmarks file.
         The directory can be specified by its full path (available with
         tab completion from a partially typed path) or by specifying the
         bookmark's list position prefixed with a hyphen, e.g., '-2'. The
-        list position can be found using the 'shmark list' command.
+        list position can be found using the 'list' action
 
-    u|undo
-        Undo the last edit to the bookmarks file. There is only one level
-        of undo. Running 'undo' again will redo the last edit.
+    undo|u
+        Undo the last edit to the bookmarks file. There is only one
+        level of undo. Running 'undo' again will redo the last edit.
 
-    e|edit
+    edit|e
         Open the bookmarks file in the default EDITOR.
 
-    chcat CATEGORY [BOOKMARK|-#]
+    chcat|cc category bookmark
+    chcat|cc category -#
         Change the category of the specified bookmark. The directory can
-        be specified by its full path (available with tab completion from
-        a partially typed path) or by specifying the bookmark's list
-        position prefixed with a hyphen, e.g., '-2'. The list position can
-        be found using the 'shmark list' command.
+        be specified by its full path (available with tab completion
+        from a partially typed path) or by specifying the bookmark's
+        list position prefixed with a hyphen, e.g., '-2'. The list
+        position can be found using the 'list' action
 
-        Tab completion can also be used for the CATEGORY.
+        Tab completion can also be used for the category.
 
 OPTIONS
-    -n              No line numbers. Don't output line numbers for lists.
     -h|--help       Display this help message.
     -V|--version    Print version information.
 ___EndHelp___
