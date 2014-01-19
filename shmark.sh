@@ -59,6 +59,7 @@ SHMARK_VERSION="@@VERSION@@"
     kill -SIGINT $$
 }
 
+: ${SHMARK_DEFAULT_ACTION:=}
 
 # == UTILITY FUNCTIONS ==
 
@@ -80,6 +81,13 @@ DESCRIPTION
     are presented in groups when listing. Some examples of category names
     might be "@CURRENT", "@NEXT" or "@PENDING" for GTD-style categories,
     and "RECENT" or "MISC" for others.
+
+    A default action (see the list of actions below) can be declared by setting
+    a SHMARK_DEFAULT_ACTION environment variable, usually in .bash_profile.
+    If a default is declared, it will be run when the function is called with
+    no arguments. An example of declaring a default action:
+
+        export SHMARK_DEFAULT_ACTION=list
 
 ACTIONS
     c|cd|g|go [BOOKMARK|-#]
@@ -330,10 +338,13 @@ shmark() {
         esac
     done
 
-    [[ $# -eq 0 ]] && return
+    # If no action is given, check for a default set in the environment
+    local action=${1:-$SHMARK_DEFAULT_ACTION}
+
+    [ -z "$action" ] && _shmark_usage
 
     # Process actions
-    case "$1" in
+    case "$action" in
         c|cd|g|go)  # go (cd) to bookmarked directory
             shift
             if [[ $# -eq 0 ]]; then
@@ -392,7 +403,7 @@ shmark() {
             ;;
 
         *)
-            echo >&2 "Error: Bad argument: $1"
+            echo >&2 "Error: Unknown action: $action"
             _shmark_usage
             ;;
     esac
