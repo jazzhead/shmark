@@ -95,6 +95,13 @@ DESCRIPTION
         export SHMARK_DEFAULT_ACTION=list
 
 ACTIONS
+    add|a [category]
+        Bookmark the current directory. An optional category can be
+        assigned. If a bookmark for the current directory already exists
+        in the bookmarks file, it will be deleted before the new
+        bookmark is added. This is an easy way to change the category
+        for the bookmark.
+
     cd|go bookmark
     cd|go -#
         Go (cd) to the specified bookmarked directory. The directory can
@@ -103,27 +110,23 @@ ACTIONS
         list position prefixed with a hyphen, e.g., '-2'. The list
         position can be found using the 'list' action
 
-    add|a [category]
-        Bookmark the current directory. An optional category can be
-        assigned. If a bookmark for the current directory already exists
-        in the bookmarks file, it will be deleted before the new
-        bookmark is added. This is an easy way to change the category
-        for the bookmark.
+    chcat|cc category bookmark
+    chcat|cc category -#
+        Change the category of the specified bookmark. The directory can
+        be specified by its full path (available with tab completion
+        from a partially typed path) or by specifying the bookmark's
+        list position prefixed with a hyphen, e.g., '-2'. The list
+        position can be found using the 'list' action
 
-    insert|ins list_number
-        Insert a bookmark for the current directory at a specific list
-        position. List positions can be found in the output of the
-        'list' action.
+        Tab completion can also be used for the category.
 
-    list|ls
-        Show a list of saved bookmarks. Bookmarks are listed by category
-        and are prefixed by their list index number. (Note that the list
-        index number is not the same as the line number in the actual
-        file. The index number is assigned after the directories have
-        been sorted by category.)
-
-    listcat|lsc
-        Show list of bookmark categories used in bookmarks file.
+    del|rm bookmark
+    del|rm -#
+        Delete the specified directory bookmark from the bookmarks file.
+        The directory can be specified by its full path (available with
+        tab completion from a partially typed path) or by specifying the
+        bookmark's list position prefixed with a hyphen, e.g., '-2'. The
+        list position can be found using the 'list' action
 
     dir
         Show just the bookmarked directories without the categories or
@@ -140,33 +143,30 @@ ACTIONS
         mainly available for use with any external command that might
         want the data.
 
-    print|p
-        Print the raw, unformatted bookmark file.
-
-    del|rm bookmark
-    del|rm -#
-        Delete the specified directory bookmark from the bookmarks file.
-        The directory can be specified by its full path (available with
-        tab completion from a partially typed path) or by specifying the
-        bookmark's list position prefixed with a hyphen, e.g., '-2'. The
-        list position can be found using the 'list' action
-
-    undo|u
-        Undo the last edit to the bookmarks file. There is only one
-        level of undo. Running 'undo' again will redo the last edit.
-
-    edit|e
+    edit|ed
         Open the bookmarks file in the default EDITOR.
 
-    chcat|cc category bookmark
-    chcat|cc category -#
-        Change the category of the specified bookmark. The directory can
-        be specified by its full path (available with tab completion
-        from a partially typed path) or by specifying the bookmark's
-        list position prefixed with a hyphen, e.g., '-2'. The list
-        position can be found using the 'list' action
+    insert|ins list_number
+        Insert a bookmark for the current directory at a specific list
+        position. List positions can be found in the output of the
+        'list' action.
 
-        Tab completion can also be used for the category.
+    list|ls
+        Show a list of saved bookmarks. Bookmarks are listed by category
+        and are prefixed by their list index number. (Note that the list
+        index number is not the same as the line number in the actual
+        file. The index number is assigned after the directories have
+        been sorted by category.)
+
+    listcat|lsc
+        Show list of bookmark categories used in bookmarks file.
+
+    print
+        Print the raw, unformatted bookmark file.
+
+    undo
+        Undo the last edit to the bookmarks file. There is only one
+        level of undo. Running 'undo' again will redo the last edit.
 
 OPTIONS
     -h|--help       Display this help message.
@@ -443,7 +443,7 @@ shmark() {
             _shmark_dir_unsorted
             ;;
 
-        print|p)    # show raw bookmark file
+        print)      # show raw bookmark file
             _shmark_print
             ;;
 
@@ -456,11 +456,11 @@ shmark() {
             _shmark_delete "$1"
             ;;
 
-        undo|u)     # undo the last edit to the bookmarks file
+        undo)       # undo the last edit to the bookmarks file
             _shmark_undo
             ;;
 
-        edit|e)     # open bookmarks file in EDITOR
+        edit|ed)    # open bookmarks file in EDITOR
             _shmark_edit
             ;;
 
