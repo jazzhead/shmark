@@ -297,6 +297,12 @@ _shmark_delete() {
     fi
 }
 
+_shmark_edit() {
+    local editor=${EDITOR-vi}
+    echo >&2 "*** Editing bookmarks file (${SHMARK_FILE/#$HOME/~})..."
+    $editor "$SHMARK_FILE"
+}
+
 _shmark_list() {
     # TODO: Fold long lines, breaking on path delimiters. <>
     local dir_only=${dir_only:-0}
@@ -361,10 +367,6 @@ _shmark_undo() {
     else
         echo >&2 "Couldn't undo. No previous backup file available."
     fi
-}
-
-_shmark_edit() {
-    echo >&2 "TODO: ${FUNCNAME}()"
 }
 
 _shmark_chcat() {
