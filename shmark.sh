@@ -128,21 +128,6 @@ ACTIONS
         bookmark's list position prefixed with a hyphen, e.g., '-2'. The
         list position can be found using the 'list' action
 
-    dir
-        Show just the bookmarked directories without the categories or
-        list index numbers. This action is mainly used internally, but
-        it might be useful for passing to external commands. Note that
-        the directories are still sorted by category the same way they
-        are with the 'list' action. If unsorted directories are needed,
-        use the 'dir_unsorted' action instead.
-
-    dir_unsorted
-        Similar to the 'dir' action except that the directories are not
-        sorted by category and are instead listed in the same order as
-        in the bookmarks file. Like the 'dir' action, this action is
-        mainly available for use with any external command that might
-        want the data.
-
     edit|ed
         Open the bookmarks file in the default EDITOR.
 
@@ -160,6 +145,22 @@ ACTIONS
 
     listcat|lsc
         Show list of bookmark categories used in bookmarks file.
+
+    listdir|lsd
+        Show just the bookmarked directories without the categories or
+        list index numbers. This action is mainly used internally, but
+        it might be useful for passing to external commands. Note that
+        the directories are still sorted by category the same way they
+        are with the 'list' action. If unsorted directories are needed,
+        use the 'listunsort' action instead.
+
+    listunsort|lsus
+        Similar to the 'listdir' action except that the directories are
+        not sorted by category and are instead listed in the same order
+        as in the bookmarks file. Categories and list index numbers are
+        not shown. Like the 'listdir' action, this action is mainly
+        available for use with any external command that might want the
+        data.
 
     print
         Print the raw, unformatted bookmark file.
@@ -207,7 +208,7 @@ _shmark_list_parse() {
 
 _shmark_list_index() {
     [[ -s "$SHMARK_FILE" ]] || return
-    sed "$1"'q;d' <<< "$(_shmark_dir)"
+    sed "$1"'q;d' <<< "$(_shmark_listdir)"
 }
 
 _shmark_find_line() {
@@ -297,6 +298,7 @@ _shmark_delete() {
 }
 
 _shmark_list() {
+    # TODO: Fold long lines, breaking on path delimiters. <>
     local dir_only=${dir_only:-0}
     local i=1
     local n label result escaped_label
@@ -336,12 +338,12 @@ _shmark_list_categories() {
     fi
 }
 
-_shmark_dir() {
+_shmark_listdir() {
     local dir_only=1
     _shmark_list
 }
 
-_shmark_dir_unsorted() {
+_shmark_listunsort() {
     cut -d\| -f2 "$SHMARK_FILE"
 }
 
@@ -442,12 +444,12 @@ shmark() {
             _shmark_list_categories
             ;;
 
-        dir)        # show just the bookmarked directories w/o labels & line #s
-            _shmark_dir
+        listdir|lsd)    # show bookmarked directories only w/o labels & line #s
+            _shmark_listdir
             ;;
 
-        dir_unsorted) # show unsorted bookmarked directories w/o labels/line #s
-            _shmark_dir_unsorted
+        listunsort|lsus) # show unsorted bookmarked directories only
+            _shmark_listunsort
             ;;
 
         print)      # show raw bookmark file
