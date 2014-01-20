@@ -122,6 +122,9 @@ ACTIONS
         file. The index number is assigned after the directories have
         been sorted by category.)
 
+    listcat|lsc
+        Show list of bookmark categories used in bookmarks file.
+
     dir
         Show just the bookmarked directories without the categories or
         list index numbers. This action is mainly used internally, but
@@ -190,10 +193,6 @@ available under the terms of a BSD-style (3-clause) open source license.
 Details are in the LICENSE file included with this distribution.
 ___EndVersion___
     return
-}
-
-_shmark_categories() {
-    cut -d\| -f1 "$SHMARK_FILE" | sort -u
 }
 
 _shmark_list_parse() {
@@ -316,7 +315,7 @@ _shmark_list() {
         [[ $dir_only -eq 1 ]] || echo "$label"
         _shmark_list_parse
         i=$((i + n))
-    done <<< "$(_shmark_categories)"
+    done <<< "$(_shmark_list_categories)"
 
     # Now add any uncategorized bookmarks using a default label
     if [[ $missing_label -eq 1 ]]; then
@@ -324,6 +323,10 @@ _shmark_list() {
         [[ $dir_only -eq 1 ]] || echo "MISCELLANEOUS"
         _shmark_list_parse
     fi
+}
+
+_shmark_list_categories() {
+    cut -d\| -f1 "$SHMARK_FILE" | sort -u | grep -v '^$'
 }
 
 _shmark_dir() {
@@ -426,6 +429,10 @@ shmark() {
 
         list|ls)    # show categorized bookmarks list
             _shmark_list
+            ;;
+
+        listcat|lsc) # show list of bookmark categories used
+            _shmark_list_categories
             ;;
 
         dir)        # show just the bookmarked directories w/o labels & line #s
