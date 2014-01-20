@@ -249,7 +249,7 @@ _shmark_add() {
     _shmark_delete "$curdir"
 
     # Output line format:  label|directory|creation date|last visited
-    echo "$1|$curdir|$curdate|$curdate" >> "$SHMARK_FILE"
+    echo "$label|$curdir|$curdate|$curdate" >> "$SHMARK_FILE"
     echo >&2 "Bookmark added for '$curdir'."
 }
 
