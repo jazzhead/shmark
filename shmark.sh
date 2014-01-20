@@ -110,6 +110,11 @@ ACTIONS
         bookmark is added. This is an easy way to change the category
         for the bookmark.
 
+    insert|ins list_number
+        Insert a bookmark for the current directory at a specific list
+        position. List positions can be found in the output of the
+        'list' action.
+
     list|ls
         Show a list of saved bookmarks. Bookmarks are listed by category
         and are prefixed by their list index number. (Note that the list
@@ -208,8 +213,8 @@ _shmark_list_index() {
 
 _shmark_find_line() {
     local dir
-    if [[ "$1" =~ ^-[0-9]+$ ]]; then
-        dir="$(_shmark_list_index ${1#-})"
+    if [[ "$1" =~ ^[0-9]+$ ]]; then
+        dir="$(_shmark_list_index $1)"
     else
         dir="$1"
     fi
@@ -233,13 +238,63 @@ _shmark_cd() {
 }
 
 _shmark_add() {
-    # Output line format:  label|directory|creation date|last visited
     local label="$1" || return
-    local dir="${PWD/#$HOME/~}"     # Replace home directory with tilde
+    local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
     local curdate="$(date '+%F %T')"
-    _shmark_delete "$dir"        # Delete old bookmark first if one exists
-    echo "$1|$dir|$curdate|$curdate" >> "$SHMARK_FILE"
-    echo >&2 "Bookmark added for '$dir'."
+
+    # Delete old bookmark first if one exists. Also makes a backup of the
+    # bookmark file so don't make another backup in this function.
+    local msg="Old bookmark deleted."
+    local should_report_failure=0
+    _shmark_delete "$curdir"
+
+    # Output line format:  label|directory|creation date|last visited
+    echo "$1|$curdir|$curdate|$curdate" >> "$SHMARK_FILE"
+    echo >&2 "Bookmark added for '$curdir'."
+}
+
+_shmark_insert() {
+    if [[ ! "$1" =~ ^[0-9]+$ ]]; then
+        echo >&2 "Error: The 'insert' action requires a number argument."
+        _shmark_usage
+    fi
+    local line_num=$(_shmark_find_line "$1")
+    if [[ ! "$line_num" =~ ^[0-9]+$ ]]; then
+        echo >&2 "Error: Invalid number: ${1}. Use a number from the list:"
+        _shmark_list >&2
+        echo >&2 "---"
+        _shmark_usage
+    fi
+
+    # Need category of bookmark currently occupying target list position
+    local label=$(awk -F\| 'NR=='$line_num' {print $1}' "$SHMARK_FILE")
+    local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
+    local curdate="$(date '+%F %T')"
+
+    # Delete old bookmark first if one exists. Also makes a backup of the
+    # bookmark file so don't make another backup in this function.
+    local msg="Old bookmark deleted."
+    local should_report_failure=0
+    _shmark_delete "$curdir"
+
+    # Output line format:  label|directory|creation date|last visited
+    local bookmark="$label|$curdir|$curdate|$curdate"
+
+    printf '%s\n' "${line_num}i" "$bookmark" . w | ed -s "$SHMARK_FILE"
+    echo >&2 "Bookmark for '$curdir' inserted into bookmarks file."
+}
+
+_shmark_delete() {
+    local msg="${msg:-Bookmark deleted.}"
+    local should_report_failure="${should_report_failure:-1}"
+    local line_num=$(_shmark_find_line "$1")
+    if [[ "$line_num" =~ ^[0-9]+$ ]]; then
+        cp -p ${SHMARK_FILE}{,.bak}
+        printf '%s\n' "${line_num}d" . w | ed -s "$SHMARK_FILE" >/dev/null
+        echo >&2 "$msg"
+    elif [[ "$should_report_failure" -eq 1 ]]; then
+        echo >&2 "Error: Couldn't find line to delete for '$1'"
+    fi
 }
 
 _shmark_list() {
@@ -256,7 +311,7 @@ _shmark_list() {
             missing_label=1
             continue
         fi
-        escaped_label=$(sed -E 's/[]\.*+?$|(){}[^]/\\&/g' <<< "$label")
+        escaped_label=$(sed -E 's/[]\.*+?$|(){}[^-]/\\&/g' <<< "$label")
         n=$(grep -c "^$escaped_label" "$SHMARK_FILE")
         [[ $dir_only -eq 1 ]] || echo "$label"
         _shmark_list_parse
@@ -283,16 +338,6 @@ _shmark_dir_unsorted() {
 _shmark_print() {
     #awk -F\| '{ printf "%-10s%-50s%-20s%s\n",$1,$2,$3,$4}' "$SHMARK_FILE"
     cat "$SHMARK_FILE"
-}
-
-_shmark_delete() {
-    local line_num=$(_shmark_find_line "$1")
-    if [[ "$line_num" =~ ^[0-9]+$ ]]; then
-        #echo >&2 "Deleting line $line_num from '$SHMARK_FILE'" # :DEBUG:
-        cp -p ${SHMARK_FILE}{,.bak}
-        printf '%s\n' "${line_num}d" . w | ed -s "$SHMARK_FILE" >/dev/null
-        echo >&2 "Bookmark deleted."
-    fi
 }
 
 _shmark_undo() {
@@ -364,6 +409,15 @@ shmark() {
         add|a)      # add a bookmark for the current directory
             shift
             _shmark_add "${1:-}" # 'label' argument optional
+            ;;
+
+        insert|ins) # insert a bookmark at a specific list position
+            shift
+            if [[ $# -eq 0 ]]; then
+                echo >&2 "Error: The 'insert' action requires an argument."
+                return
+            fi
+            _shmark_insert "$1"
             ;;
 
         list|ls)    # show categorized bookmarks list
