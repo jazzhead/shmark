@@ -100,7 +100,21 @@ ACTIONS
         assigned. If a bookmark for the current directory already exists
         in the bookmarks file, it will be deleted before the new
         bookmark is added. This is an easy way to change the category
-        for the bookmark.
+        for the bookmark and/or promote it to the top of its category.
+
+        If the category is omitted, the bookmark will appear under a
+        default category of MISCELLANEOUS which is always listed as the
+        last category. To change the name of that default category,
+        export an envronment variable with the desired category name,
+        for example:
+
+            export SHMARK_DEFAULT_CATEGORY=Archive
+
+        Bookmarks are added to the beginning of the bookmarks file so
+        bookmarks will appear under their category in reverse chrono-
+        logical order of the date added -- more recent bookmarks before
+        older bookmarks (within the assigned categories; categories are
+        sorted alphabetically).
 
     cd|go bookmark
     cd|go -#
@@ -249,7 +263,8 @@ _shmark_add() {
     _shmark_delete "$curdir"
 
     # Output line format:  label|directory|creation date|last visited
-    echo "$label|$curdir|$curdate|$curdate" >> "$SHMARK_FILE"
+    local bookmark="$label|$curdir|$curdate|$curdate"
+    printf '%s\n' 0a "$bookmark" . w | ed -s "$SHMARK_FILE"
     echo >&2 "Bookmark added for '$curdir'."
 }
 
