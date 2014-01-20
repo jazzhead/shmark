@@ -341,10 +341,14 @@ _shmark_print() {
 }
 
 _shmark_undo() {
-    echo >&2 "Undoing last edit to the bookmarks file..."
-    mv -f "${SHMARK_FILE}"{.bak,.tmp} # rename current backup as tmp
-    mv -f "${SHMARK_FILE}"{,.bak}     # rename current file as new backup
-    mv -f "${SHMARK_FILE}"{.tmp,}     # rename tmp file as new current file
+    if [[ -f "${SHMARK_FILE}.bak" ]]; then
+        echo >&2 "Undoing last edit to the bookmarks file..."
+        mv -f "${SHMARK_FILE}"{.bak,.tmp} # rename current backup as tmp
+        mv -f "${SHMARK_FILE}"{,.bak}     # rename current file as new backup
+        mv -f "${SHMARK_FILE}"{.tmp,}     # rename tmp file as new current
+    else
+        echo >&2 "Couldn't undo. No previous backup file available."
+    fi
 }
 
 _shmark_edit() {
