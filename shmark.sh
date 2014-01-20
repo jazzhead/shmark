@@ -301,6 +301,7 @@ _shmark_list() {
     local i=1
     local n label result escaped_label
     local missing_label=0
+    local include_blank_categories=1
 
     [[ -s "$SHMARK_FILE" ]] || return
 
@@ -326,7 +327,13 @@ _shmark_list() {
 }
 
 _shmark_list_categories() {
-    cut -d\| -f1 "$SHMARK_FILE" | sort -u | grep -v '^$'
+    local include_blank_categories=${include_blank_categories=-0}
+    local categories=$(cut -d\| -f1 "$SHMARK_FILE" | sort -u)
+    if [[ "$include_blank_categories" -eq 1 ]]; then
+        echo "$categories"
+    else
+        grep -v '^$' <<< "$categories"
+    fi
 }
 
 _shmark_dir() {
