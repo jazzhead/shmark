@@ -177,7 +177,9 @@ ACTIONS
         data.
 
     print
-        Print the raw, unformatted bookmark file.
+        Print the raw, unformatted bookmark file. The lines are prefixed
+        with a line number (line numbers are not in the actual bookmarks
+        file).
 
     undo
         Undo the last edit to the bookmarks file. There is only one
@@ -216,7 +218,9 @@ _shmark_list_parse() {
     if [[ $dir_only = 1 ]]; then
         echo "$result"
     else
-        nl -s') ' -v $i -w4 <<< "$result"
+        local width=$( echo $(printf $(wc -l < "$SHMARK_FILE") | wc -c) )
+        width=$(( width + 2 ))  # indent list items two spaces
+        nl -w $width -s ') ' -v $i <<< "$result"
     fi
 }
 
@@ -370,7 +374,9 @@ _shmark_listunsort() {
 
 _shmark_print() {
     #awk -F\| '{ printf "%-10s%-50s%-20s%s\n",$1,$2,$3,$4}' "$SHMARK_FILE"
-    cat "$SHMARK_FILE"
+    #cat "$SHMARK_FILE"
+    local width=$( echo $( printf $( wc -l < "$SHMARK_FILE" ) | wc -c ) )
+    nl -w $width -s ') ' "$SHMARK_FILE"
 }
 
 _shmark_undo() {
