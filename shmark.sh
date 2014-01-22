@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash __this-file-should-be-sourced-not-run__
 ##############################################################################
 #
 # shmark - Categorized shell directory bookmarking for Bash
@@ -33,26 +33,18 @@
 #
 ##############################################################################
 #
+# @date    2014-01-21 Last modified
 # @date    2014-01-18 First version
 # @author  Steve Wheeler
 #
-# TODO: A script can't change an interactive shell's directory. So this entire
-#       script will need to be converted into a file of functions that can be
-#       sourced. The Bash completion code will move to this file as well.
-#       For now, I'll keep it as a script while I write all the functions so I
-#       can have more robust error-checking and also so I don't have to keep
-#       closing shells and starting new ones. <2014-01-18 00:23:59>
-#
 ##############################################################################
 
-set -o nounset  # (set -u) Treat unset variables as error and exit script
-set -o errexit  # (set -e) Exit if any command returns a non-zero status
-set -o pipefail # Return non-zero status if any piped commands fail
+[ -n "$BASH_VERSION" ] || return    # bash required
 
 SHMARK_VERSION="@@VERSION@@"
 
 #: ${SHMARK_FILE:=bookmarks.example}
-: ${SHMARK_FILE:=~/Desktop/test.noindex/bookmarks}
+: ${SHMARK_FILE:=$HOME/Desktop/test.noindex/bookmarks}
 
 [[ -f "$SHMARK_FILE" ]] || touch "$SHMARK_FILE" || {
     echo >&2 "Couldn't create a bookmarks file at '$SHMARK_FILE'"
@@ -61,7 +53,7 @@ SHMARK_VERSION="@@VERSION@@"
 
 : ${SHMARK_DEFAULT_ACTION:=}
 
-# == UTILITY FUNCTIONS ==
+# == INFO FUNCTIONS ==
 
 _shmark_oneline_usage() {
     echo "shmark [-hV] [-#] [action] [bookmark|category]"
@@ -93,6 +85,11 @@ DESCRIPTION
     action:
 
         export SHMARK_DEFAULT_ACTION=list
+
+INSTALLATION
+    This is a Bash functions file which should be sourced into your
+    shell environment rather than run directly. See the included INSTALL
+    file for full installation instructions.
 
 ACTIONS
     add|a [category]
@@ -191,7 +188,7 @@ OPTIONS
     -h|--help       Display this help message.
     -V|--version    Print version information.
 ___EndHelp___
-    return
+    return 1
 }
 
 _shmark_usage() {
@@ -211,8 +208,135 @@ This program comes with ABSOLUTELY NO WARRANTY. It is free software
 available under the terms of a BSD-style (3-clause) open source license.
 Details are in the LICENSE file included with this distribution.
 ___EndVersion___
-    return
+    return 1
 }
+
+# == MAIN FUNCTION ==
+
+shmark() {
+    echo >&2 "DEBUG: ${FUNCNAME}(): running..."
+
+    # Process options
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -[0-9]*)
+                if [[ "$1" =~ ^-[0-9]+$ ]]; then
+                    _shmark_cd $1
+                    return 0
+                else
+                    echo >&2 "Error: Bad option: $1"
+                    _shmark_usage
+                    return 1
+                fi
+                return 0
+                ;;
+            -h|--help)
+                _shmark_help
+                return 0
+                ;;
+            -V|--version)
+                _shmark_version
+                return 0
+                ;;
+            -\?)
+                _shmark_usage
+                return 1
+                ;;
+            -*)
+                echo >&2 "Error: Bad option: $1"
+                _shmark_usage
+                return 1
+                ;;
+            *) # No more options; stop loop
+                break
+                ;;
+        esac
+    done
+
+    # If no action is given, check for a default set in the environment
+    local action=${1:-$SHMARK_DEFAULT_ACTION}
+
+    if [ -z "$action" ]; then
+        _shmark_usage
+        return 1
+    fi
+
+    # Process actions
+    case "$action" in
+        cd|go)      # go (cd) to bookmarked directory
+            shift
+            if [[ $# -eq 0 ]]; then
+                echo >&2 "Error: The 'cd' action requires an argument."
+                return
+            fi
+            _shmark_cd "$1"
+            ;;
+
+        add|a)      # add a bookmark for the current directory
+            shift
+            _shmark_add "${1:-}" # 'label' argument optional
+            ;;
+
+        insert|ins) # insert a bookmark at a specific list position
+            shift
+            _shmark_insert "${1:-}" # will be prompted if arg omitted
+            ;;
+
+        list|ls)    # show categorized bookmarks list
+            _shmark_list
+            ;;
+
+        listcat|lsc) # show list of bookmark categories used
+            _shmark_list_categories
+            ;;
+
+        listdir|lsd)    # show bookmarked directories only w/o labels & line #s
+            _shmark_listdir
+            ;;
+
+        listunsort|lsus) # show unsorted bookmarked directories only
+            _shmark_listunsort
+            ;;
+
+        print)      # show raw bookmark file
+            _shmark_print
+            ;;
+
+        del|rm)     # delete a bookmark
+            shift
+            if [[ $# -eq 0 ]]; then
+                echo >&2 "Error: The 'delete' action requires an argument."
+                return
+            fi
+            _shmark_delete "$1"
+            ;;
+
+        undo)       # undo the last edit to the bookmarks file
+            _shmark_undo
+            ;;
+
+        edit|ed)    # open bookmarks file in EDITOR
+            _shmark_edit
+            ;;
+
+        chcat|cc)   # Change the category of a bookmark
+            shift
+            if [[ $# -eq 2 ]]; then
+                _shmark_chcat "$@"
+            else
+                echo >&2 "Error: The 'chcat' action requires two arguments."
+                return
+            fi
+            ;;
+
+        *)
+            echo >&2 "Error: Unknown action: $action"
+            _shmark_usage
+            ;;
+    esac
+}
+
+# == UTILITY FUNCTIONS ==
 
 _shmark_list_parse() {
     local result
@@ -256,17 +380,23 @@ _shmark_validate_num() {
 # == ACTIONS ==
 
 _shmark_cd() {
-    #echo "DEBUG: ${FUNCNAME}(): $1"
+    echo "DEBUG: ${FUNCNAME}(): $1"
     local dir
     if [[ "$1" =~ ^-[0-9]+$ ]]; then
         dir="$(_shmark_list_index ${1#-})"
     else
         dir="$1"
     fi
-    #echo "DEBUG: ${FUNCNAME}(): $dir"
-    cd "${dir/#~/$HOME}" && pwd && ls # NOTE: 'ls' is just for testing
+    echo "DEBUG: ${FUNCNAME}(): $dir"
+    local expanded_path="${dir/#~/$HOME}"
+    [[ -d "$expanded_path" ]] || {
+        echo >&2 "Error: No such directory: '$dir'"
+        return 1
+    }
+    cd "$expanded_path" && pwd && ls # NOTE: 'ls' is just for testing
 
     # TODO: Update 'last visited' field for directory in bookmark file.
+    echo "TODO: ${FUNCNAME}(): Update 'last visited' field in bookmark file"
 }
 
 _shmark_add() {
@@ -484,135 +614,3 @@ _shmark_chcat() {
     echo >&2 "TODO: ${FUNCNAME}()"
 }
 
-# == MAIN FUNCTION ==
-
-shmark() {
-    # Process options
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -[0-9]*)
-                if [[ "$1" =~ ^-[0-9]+$ ]]; then
-                    _shmark_cd $1
-                else
-                    echo >&2 "Error: Bad option: $1"
-                    _shmark_usage
-                fi
-                return
-                ;;
-            -h|--help)
-                _shmark_help
-                ;;
-            -V|--version)
-                _shmark_version
-                ;;
-            -\?)
-                _shmark_usage
-                ;;
-            -*)
-                echo >&2 "Error: Bad option: $1"
-                _shmark_usage
-                ;;
-            *) # No more options; stop loop
-                break
-                ;;
-        esac
-    done
-
-    # If no action is given, check for a default set in the environment
-    local action=${1:-$SHMARK_DEFAULT_ACTION}
-
-    [ -z "$action" ] && _shmark_usage
-
-    # Process actions
-    case "$action" in
-        cd|go)      # go (cd) to bookmarked directory
-            shift
-            if [[ $# -eq 0 ]]; then
-                echo >&2 "Error: The 'cd' action requires an argument."
-                return
-            fi
-            _shmark_cd "$1"
-            ;;
-
-        add|a)      # add a bookmark for the current directory
-            shift
-            _shmark_add "${1:-}" # 'label' argument optional
-            ;;
-
-        insert|ins) # insert a bookmark at a specific list position
-            shift
-            _shmark_insert "${1:-}" # will be prompted if arg omitted
-            ;;
-
-        list|ls)    # show categorized bookmarks list
-            _shmark_list
-            ;;
-
-        listcat|lsc) # show list of bookmark categories used
-            _shmark_list_categories
-            ;;
-
-        listdir|lsd)    # show bookmarked directories only w/o labels & line #s
-            _shmark_listdir
-            ;;
-
-        listunsort|lsus) # show unsorted bookmarked directories only
-            _shmark_listunsort
-            ;;
-
-        print)      # show raw bookmark file
-            _shmark_print
-            ;;
-
-        del|rm)     # delete a bookmark
-            shift
-            if [[ $# -eq 0 ]]; then
-                echo >&2 "Error: The 'delete' action requires an argument."
-                return
-            fi
-            _shmark_delete "$1"
-            ;;
-
-        undo)       # undo the last edit to the bookmarks file
-            _shmark_undo
-            ;;
-
-        edit|ed)    # open bookmarks file in EDITOR
-            _shmark_edit
-            ;;
-
-        chcat|cc)   # Change the category of a bookmark
-            shift
-            if [[ $# -eq 2 ]]; then
-                _shmark_chcat "$@"
-            else
-                echo >&2 "Error: The 'chcat' action requires two arguments."
-                return
-            fi
-            ;;
-
-        *)
-            echo >&2 "Error: Unknown action: $action"
-            _shmark_usage
-            ;;
-    esac
-}
-
-# == BASH COMPLETIONS ==
-
-#_shmark() {
-#    #printf >&2 "\n%s\n%s\n%s\n"\
-#    #    "DEBUG: complete:_shmark():" "  \$1 = $1" "  \$2 = $2"
-#
-#    local cur prev opts
-#    COMPREPLY=()
-#    cur="${COMP_WORDS[COMP_CWORD]}"
-#    prev="${COMP_WORDS[COMP_CWORD-1]}"
-#
-#    COMPREPLY=( $( shmark dir | grep ".*$2.*" ) )
-#}
-
-#complete -F _shmark -o default shmark  # function
-#complete -F _shmark -o default bm         # alias
-
-shmark "$@" # DEBUG: For shell script debugging only. Not for function file.
