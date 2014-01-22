@@ -114,7 +114,8 @@ ACTIONS
         bookmarks will appear under their category in reverse chrono-
         logical order of the date added -- more recent bookmarks before
         older bookmarks (within the assigned categories; categories are
-        sorted alphabetically).
+        sorted alphabetically). To add a bookmark to the very bottom of
+        the list, use the 'insert' command.
 
     cd|go bookmark
     cd|go -#
@@ -145,10 +146,11 @@ ACTIONS
     edit|ed
         Open the bookmarks file in the default EDITOR.
 
-    insert|ins list_number
+    insert|ins list_position
         Insert a bookmark for the current directory at a specific list
         position. List positions can be found in the output of the
-        'list' action.
+        'list' action. To append a bookmark to the end of the list, give
+        a list position that is greater than the last position.
 
     list|ls
         Show a list of saved bookmarks. Bookmarks are listed by category
@@ -239,6 +241,18 @@ _shmark_find_line() {
     fgrep -n -m1 "|${dir}|" "$SHMARK_FILE" | cut -d: -f1
 }
 
+_shmark_validate_num() {
+    local num="$1"; shift
+    local msg="$1"
+    if [[ ! "$num" =~ ^[1-9][0-9]*$ ]]; then
+        echo >&2 "$msg"
+        echo >&2 ""
+        _shmark_list >&2
+        echo >&2 ""
+        _shmark_usage
+    fi
+}
+
 # == ACTIONS ==
 
 _shmark_cd() {
@@ -262,9 +276,9 @@ _shmark_add() {
 
     # Delete old bookmark first if one exists. Also makes a backup of the
     # bookmark file so don't make another backup in this function.
-    local msg="Old bookmark deleted."
+    local delete_msg="Old bookmark deleted."
     local should_report_failure=0
-    _shmark_delete "$curdir"
+    _shmark_delete "$curdir" || true  # continue regardless
 
     # Output line format:  label|directory|creation date|last visited
     local bookmark="$label|$curdir|$curdate|$curdate"
@@ -273,46 +287,122 @@ _shmark_add() {
 }
 
 _shmark_insert() {
-    if [[ ! "$1" =~ ^[0-9]+$ ]]; then
-        echo >&2 "Error: The 'insert' action requires a number argument."
-        _shmark_usage
+    local line_num list_pos msg delete_succeeded
+    local ed_cmd=
+    local line_total=$(echo $(wc -l < "$SHMARK_FILE"))
+    local np=$((line_total + 1)) # 'np' = "next position" (needed a short var)
+
+    local default_errmsg=$( printf "%s\n" \
+        "Error: The 'insert' action requires a number argument chosen" \
+        "       from the bookmarks list. To append as the last bookmark," \
+        "       use ${np}; otherwise, use a number 1-${line_total}."
+    )
+
+    # Get the target list postion:
+    if [[ -z "$1" ]]; then
+        # Handle a missing argument by prompting for a number:
+        msg=$( printf "%s\n" \
+            "" \
+            "> Enter a list position where the bookmark should be inserted." \
+            "> To append as the last bookmark, use ${np}; otherwise, use a" \
+            "> number 1-${line_total}: "
+        )
+        while true; do
+            _shmark_list >&2
+            read -p "$msg" list_pos
+            [[ "$list_pos" =~ ^[1-9][0-9]*$ ]] && break
+        done
+    else
+        # Make sure a list position argument from the command line is a
+        # number and that the number is not zero:
+        _shmark_validate_num "$1" "$default_errmsg"
+        list_pos="$1"
     fi
-    local line_num=$(_shmark_find_line "$1")
-    if [[ ! "$line_num" =~ ^[0-9]+$ ]]; then
-        echo >&2 "Error: Invalid number: ${1}. Use a number from the list:"
-        _shmark_list >&2
-        echo >&2 "---"
-        _shmark_usage
+
+    # If the list position number is greater than the bookmark total, that
+    # means append the new bookmark as the very last bookmark.
+    if [[ $list_pos -gt $line_total ]]; then
+        # Need the list position for the current last bookmark so we can look
+        # up its actual line number and then find out what its category is.
+        list_pos=$line_total
+        # The 'ed' command for appending (`a`) after the last line (`$`).
+        ed_cmd='$a'
     fi
+
+    # Find out the line number in the bookmarks file for the bookmark at
+    # this list position.
+    line_num=$(_shmark_find_line "$list_pos")
+
+    # Now check that the line number is a number and is not zero:
+    _shmark_validate_num "$line_num" "$default_errmsg"
 
     # Need category of bookmark currently occupying target list position
     local label=$(awk -F\| 'NR=='$line_num' {print $1}' "$SHMARK_FILE")
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
     local curdate="$(date '+%F %T')"
 
-    # Delete old bookmark first if one exists. Also makes a backup of the
-    # bookmark file so don't make another backup in this function.
-    local msg="Old bookmark deleted."
+    #printf >&2 "DEBUG: ${FUNCNAME}(): %s\n" \
+    #    "list_pos = $list_pos" \
+    #    "line_num = $line_num" \
+    #    "label    = $label"
+    #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
+
+    # Delete old bookmark first if one exists. This also makes a backup of
+    # the bookmark file so don't make another backup in this function.
+    local delete_msg="Old bookmark deleted."
     local should_report_failure=0
-    _shmark_delete "$curdir"
+    if _shmark_delete "$curdir"; then
+        delete_succeeded=1
+    else
+        delete_succeeded=0
+    fi
+
+    # FIXME: This assumes that an old bookmark being deleted is on a
+    # line above the destination line. That is not always the case. Both
+    # this function and the 'delete' function will need to be reworked.
+    # The line number for the bookmark to delete needs to be obtained
+    # in this function, not the 'delete' function, so that it can be
+    # compared to the target line number. <>
+    if [[ -z "$ed_cmd" ]]; then
+        if [[ $line_num -eq $line_total && $delete_succeeded -eq 1 ]]; then
+            # If line number specified is the last line of the file, and an
+            # old bookmark was deleted, then that line number is no longer
+            # valid. So tell 'ed' to append the line to the end of the file.
+            ed_cmd='$a'
+        else
+            # Okay, we have a valid line number for inserting the new line.
+            ed_cmd="${line_num}i"
+        fi
+    fi
+
+    #printf >&2 "DEBUG: ${FUNCNAME}(): %s\n" \
+    #    "ed_cmd   = $ed_cmd"
 
     # Output line format:  label|directory|creation date|last visited
     local bookmark="$label|$curdir|$curdate|$curdate"
 
-    printf '%s\n' "${line_num}i" "$bookmark" . w | ed -s "$SHMARK_FILE"
+    #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
+
+    printf '%s\n' "$ed_cmd" "$bookmark" . w | ed -s "$SHMARK_FILE"
     echo >&2 "Bookmark for '$curdir' inserted into bookmarks file."
 }
 
 _shmark_delete() {
-    local msg="${msg:-Bookmark deleted.}"
+    local delete_msg="${delete_msg:-Bookmark deleted.}"
     local should_report_failure="${should_report_failure:-1}"
     local line_num=$(_shmark_find_line "$1")
-    if [[ "$line_num" =~ ^[0-9]+$ ]]; then
+    if [[ "$line_num" =~ ^[1-9][0-9]*$ ]]; then
         cp -p ${SHMARK_FILE}{,.bak}
         printf '%s\n' "${line_num}d" . w | ed -s "$SHMARK_FILE" >/dev/null
-        echo >&2 "$msg"
-    elif [[ "$should_report_failure" -eq 1 ]]; then
-        echo >&2 "Error: Couldn't find line to delete for '$1'"
+        echo >&2 "$delete_msg"
+        return 0
+    else
+        if [[ "$should_report_failure" -eq 1 ]]; then   # direct 'delete' call
+            echo >&2 "Error: Couldn't find line to delete for '$1'"
+        else               # called from 'add' or 'insert' function, so backup
+            cp -p ${SHMARK_FILE}{,.bak}
+        fi
+        return 1
     fi
 }
 
@@ -402,7 +492,6 @@ shmark() {
         case "$1" in
             -[0-9]*)
                 if [[ "$1" =~ ^-[0-9]+$ ]]; then
-                    #_shmark_list_index ${1#-} # :DEBUG:
                     _shmark_cd $1
                 else
                     echo >&2 "Error: Bad option: $1"
@@ -452,11 +541,7 @@ shmark() {
 
         insert|ins) # insert a bookmark at a specific list position
             shift
-            if [[ $# -eq 0 ]]; then
-                echo >&2 "Error: The 'insert' action requires an argument."
-                return
-            fi
-            _shmark_insert "$1"
+            _shmark_insert "${1:-}" # will be prompted if arg omitted
             ;;
 
         list|ls)    # show categorized bookmarks list
