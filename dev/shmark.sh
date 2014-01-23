@@ -26,6 +26,6 @@ PROGNAME="${0##*/}"
 
 . ./shmark.sh
 
-echo >&2 "DEBUG: ${PROGNAME}: running..."
+#echo >&2 "DEBUG: ${PROGNAME}: running..."
 
 shmark "$@"  # call the main function (all other functions are private)

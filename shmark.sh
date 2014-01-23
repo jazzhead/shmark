@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2014-01-21 Last modified
+# @date    2014-01-22 Last modified
 # @date    2014-01-18 First version
 # @author  Steve Wheeler
 #
@@ -44,7 +44,9 @@
 SHMARK_VERSION="@@VERSION@@"
 
 #: ${SHMARK_FILE:=bookmarks.example}
-: ${SHMARK_FILE:=$HOME/Desktop/test.noindex/bookmarks}
+: ${SHMARK_FILE:="~/Desktop/test.noindex/bookmarks"}
+SHMARK_FILE="${SHMARK_FILE/#~/$HOME}" # expand tilde to home directory path
+#echo "DEBUG: $SHMARK_FILE"; return 1
 
 [[ -f "$SHMARK_FILE" ]] || touch "$SHMARK_FILE" || {
     echo >&2 "Couldn't create a bookmarks file at '$SHMARK_FILE'"
@@ -56,7 +58,7 @@ SHMARK_VERSION="@@VERSION@@"
 # == INFO FUNCTIONS ==
 
 _shmark_oneline_usage() {
-    echo "shmark [-hV] [-#] [action] [bookmark|category]"
+    echo "shmark [-hV] [-f bookmark_file] [-#] [action] [bookmark|category]"
 }
 
 _shmark_help() {
@@ -185,6 +187,9 @@ ACTIONS
         level of undo. Running 'undo' again will redo the last edit.
 
 OPTIONS
+    -f bookmark_file
+        Use the specified bookmark file instead of the configured file.
+
     -h|--help       Display this help message.
     -V|--version    Print version information.
 ___EndHelp___
@@ -214,7 +219,7 @@ ___EndVersion___
 # == MAIN FUNCTION ==
 
 shmark() {
-    echo >&2 "DEBUG: ${FUNCNAME}(): running..."
+    #echo >&2 "DEBUG: ${FUNCNAME}(): running..."
 
     # Process options
     while [[ $# -gt 0 ]]; do
@@ -229,6 +234,19 @@ shmark() {
                     return 1
                 fi
                 return 0
+                ;;
+            -f)
+                shift
+                local file
+                file="${1/#~/$HOME}" # expand tilde to home directory path
+                [[ -f "$file" ]] || touch "$file" || {
+                    echo >&2 "Couldn't create a bookmarks file at '$file'"
+                    kill -SIGINT $$
+                }
+                SHMARK_FILE="$file"
+                unset file
+                shift
+                #echo "DEBUG: $SHMARK_FILE"; return 1
                 ;;
             -h|--help)
                 _shmark_help
@@ -517,6 +535,7 @@ _shmark_insert() {
     echo >&2 "Bookmark for '$curdir' inserted into bookmarks file."
 }
 
+# FIXME: Fails if the line to delete is the only line in file. ('ed' limitation)
 _shmark_delete() {
     local delete_msg="${delete_msg:-Bookmark deleted.}"
     local should_report_failure="${should_report_failure:-1}"
