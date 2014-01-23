@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2014-01-22 Last modified
+# @date    2014-01-23 Last modified
 # @date    2014-01-18 First version
 # @author  Steve Wheeler
 #
@@ -59,6 +59,18 @@ SHMARK_FILE="${SHMARK_FILE/#~/$HOME}" # expand tilde to home directory path
 
 _shmark_oneline_usage() {
     echo "shmark [-hV] [-f bookmark_file] [-#] [action] [bookmark|category]"
+}
+
+_shmark_shorthelp() {
+    cat <<___EndHelp___
+Usage: $(_shmark_oneline_usage)
+
+Actions:
+$(_shmark_actions_help | egrep '^    [^ ]')
+
+Try the "help" action for full details.
+___EndHelp___
+    return 0
 }
 
 _shmark_help() {
@@ -94,14 +106,31 @@ INSTALLATION
     file for full installation instructions.
 
 ACTIONS
-    add|a [category]
-        Bookmark the current directory. An optional category can be
+$(_shmark_actions_help)
+
+OPTIONS
+    -f bookmark_file
+        Use the specified bookmark file instead of the configured file.
+
+    -h|--help
+        Display a brief help message (same as action "shorthelp").
+
+    -V|--version
+        Print version information.
+___EndHelp___
+    return 0
+}
+
+_shmark_actions_help() {
+    cat <<-___EndHelp___
+    add|a [CATEGORY]
+        Bookmark the current directory. An optional CATEGORY can be
         assigned. If a bookmark for the current directory already exists
         in the bookmarks file, it will be deleted before the new
         bookmark is added. This is an easy way to change the category
         for the bookmark and/or promote it to the top of its category.
 
-        If the category is omitted, the bookmark will appear under a
+        If the CATEGORY is omitted, the bookmark will appear under a
         default category of MISCELLANEOUS which is always listed as the
         last category. To change the name of that default category,
         export an envronment variable with the desired category name,
@@ -116,36 +145,39 @@ ACTIONS
         sorted alphabetically). To add a bookmark to the very bottom of
         the list, use the 'insert' command.
 
-    cd|go bookmark
+    cd|go BOOKMARK
     cd|go -#
-        Go (cd) to the specified bookmarked directory. The directory can
+        Go (cd) to the specified directory BOOKMARK. The directory can
         be specified by its full path (available with tab completion
         from a partially typed path) or by specifying the bookmark's
-        list position prefixed with a hyphen, e.g., '-2'. The list
-        position can be found using the 'list' action
+        list position (number) prefixed with a hyphen, e.g., '-2'. The
+        list position can be found using the 'list' action.
 
-    chcat|cc category bookmark
-    chcat|cc category -#
-        Change the category of the specified bookmark. The directory can
+    chcat|cc CATEGORY BOOKMARK
+    chcat|cc CATEGORY -#
+        Change the CATEGORY of the specified BOOKMARK. The directory can
         be specified by its full path (available with tab completion
         from a partially typed path) or by specifying the bookmark's
-        list position prefixed with a hyphen, e.g., '-2'. The list
-        position can be found using the 'list' action
+        list position (number) prefixed with a hyphen, e.g., '-2'. The
+        list position can be found using the 'list' action.
 
-        Tab completion can also be used for the category.
+        Tab completion can also be used for the CATEGORY.
 
-    del|rm bookmark
+    del|rm BOOKMARK
     del|rm -#
-        Delete the specified directory bookmark from the bookmarks file.
+        Delete the specified directory BOOKMARK from the bookmarks file.
         The directory can be specified by its full path (available with
         tab completion from a partially typed path) or by specifying the
-        bookmark's list position prefixed with a hyphen, e.g., '-2'. The
-        list position can be found using the 'list' action
+        bookmark's list position (number) prefixed with a hyphen, e.g.,
+        '-2'. The list position can be found using the 'list' action.
 
     edit|ed
         Open the bookmarks file in the default EDITOR.
 
-    insert|ins list_position
+    help
+        Display detailed help.
+
+    insert|ins LIST_POSITION
         Insert a bookmark for the current directory at a specific list
         position. List positions can be found in the output of the
         'list' action. To append a bookmark to the end of the list, give
@@ -182,18 +214,13 @@ ACTIONS
         with a line number (line numbers are not in the actual bookmarks
         file).
 
+    shorthelp
+        List brief usage for all command actions (same as -h).
+
     undo
         Undo the last edit to the bookmarks file. There is only one
         level of undo. Running 'undo' again will redo the last edit.
-
-OPTIONS
-    -f bookmark_file
-        Use the specified bookmark file instead of the configured file.
-
-    -h|--help       Display this help message.
-    -V|--version    Print version information.
 ___EndHelp___
-    return 1
 }
 
 _shmark_usage() {
@@ -213,7 +240,7 @@ This program comes with ABSOLUTELY NO WARRANTY. It is free software
 available under the terms of a BSD-style (3-clause) open source license.
 Details are in the LICENSE file included with this distribution.
 ___EndVersion___
-    return 1
+    return 0
 }
 
 # == MAIN FUNCTION ==
@@ -227,13 +254,11 @@ shmark() {
             -[0-9]*)
                 if [[ "$1" =~ ^-[0-9]+$ ]]; then
                     _shmark_cd $1
-                    return 0
                 else
                     echo >&2 "Error: Bad option: $1"
                     _shmark_usage
-                    return 1
                 fi
-                return 0
+                return $?
                 ;;
             -f)
                 shift
@@ -249,21 +274,21 @@ shmark() {
                 #echo "DEBUG: $SHMARK_FILE"; return 1
                 ;;
             -h|--help)
-                _shmark_help
-                return 0
+                _shmark_shorthelp
+                return $?
                 ;;
             -V|--version)
                 _shmark_version
-                return 0
+                return $?
                 ;;
             -\?)
                 _shmark_usage
-                return 1
+                return $?
                 ;;
             -*)
                 echo >&2 "Error: Bad option: $1"
                 _shmark_usage
-                return 1
+                return $?
                 ;;
             *) # No more options; stop loop
                 break
@@ -337,7 +362,7 @@ shmark() {
             _shmark_edit
             ;;
 
-        chcat|cc)   # Change the category of a bookmark
+        chcat|cc)   # change the category of a bookmark
             shift
             if [[ $# -eq 2 ]]; then
                 _shmark_chcat "$@"
@@ -345,6 +370,14 @@ shmark() {
                 echo >&2 "Error: The 'chcat' action requires two arguments."
                 return
             fi
+            ;;
+
+        help)       # show detailed help
+            _shmark_help
+            ;;
+
+        shorthelp)  # show short help
+            _shmark_shorthelp
             ;;
 
         *)
