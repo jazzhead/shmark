@@ -301,7 +301,7 @@ shmark() {
 
     if [ -z "$action" ]; then
         _shmark_usage
-        return 1
+        return $?
     fi
 
     # Process actions
@@ -341,7 +341,7 @@ shmark() {
             _shmark_listunsort
             ;;
 
-        print)      # show raw bookmark file
+        print)      # show raw bookmark file (w/line numbers)
             _shmark_print
             ;;
 
@@ -373,6 +373,14 @@ shmark() {
             ;;
 
         help)       # show detailed help
+            # If STDOUT is to a terminal (TTY), then try to pipe
+            # the output to the PAGER (less by default):
+            if [ -t 1 ]; then
+                if which "${PAGER:-less}" >/dev/null 2>&1; then
+                    _shmark_help | "${PAGER:-less}" && return 0
+                fi
+            fi
+            # Fallback to STDOUT for redirection or pipes:
             _shmark_help
             ;;
 
