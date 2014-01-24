@@ -133,17 +133,25 @@ _shmark_actions_help() {
         If the CATEGORY is omitted, the bookmark will appear under a
         default category of MISCELLANEOUS which is always listed as the
         last category. To change the name of that default category,
-        export an envronment variable with the desired category name,
+        export an environment variable with the desired category name,
         for example:
 
             export SHMARK_DEFAULT_CATEGORY=Archive
 
         Bookmarks are added to the beginning of the bookmarks file so
-        bookmarks will appear under their category in reverse chrono-
-        logical order of the date added -- more recent bookmarks before
-        older bookmarks (within the assigned categories; categories are
-        sorted alphabetically). To add a bookmark to the very bottom of
-        the list, use the 'insert' command.
+        the most recently added bookmark will be listed as the first in
+        its category. To add a bookmark as the very last in its
+        category, use the 'append' command. To insert a bookmark at a
+        specific list position, use the 'insert' command. All bookmarks
+        are grouped by category in the output of the 'list' command.
+
+    append|app [CATEGORY]
+        Similar to the 'add' command except that the bookmark is added
+        to the bottom of the bookmarks file instead of the top. So a
+        bookmark that is "appended" will be listed as the last in its
+        category. A bookmark that is "added" will be listed as the first
+        in its category. All bookmarks are grouped by category in the
+        output if the 'list' command.
 
     cd|go BOOKMARK
     cd|go -#
@@ -180,8 +188,10 @@ _shmark_actions_help() {
     insert|ins LIST_POSITION
         Insert a bookmark for the current directory at a specific list
         position. List positions can be found in the output of the
-        'list' action. To append a bookmark to the end of the list, give
-        a list position that is greater than the last position.
+        'list' action. A bookmark can be appended to the end of the list
+        by giving a list position that is greater than the last
+        position, but the 'append' command is made specifically for
+        appending.
 
     list|ls
         Show a list of saved bookmarks. Bookmarks are listed by category
@@ -315,9 +325,14 @@ shmark() {
             _shmark_cd "$1"
             ;;
 
-        add|a)      # add a bookmark for the current directory
+        add|a)      # add bookmark for current directory to top of file
             shift
             _shmark_add "${1:-}" # 'label' argument optional
+            ;;
+
+        append|app) # append bookmark for current directory to bottom of file
+            shift
+            _shmark_append "${1:-}" # 'label' argument optional
             ;;
 
         insert|ins) # insert a bookmark at a specific list position
@@ -473,6 +488,23 @@ _shmark_add() {
     local bookmark="$label|$curdir|$curdate|$curdate"
     printf '%s\n' 0a "$bookmark" . w | ed -s "$SHMARK_FILE"
     echo >&2 "Bookmark added for '$curdir'."
+}
+
+_shmark_append() {
+    local label="$1" || return
+    local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
+    local curdate="$(date '+%F %T')"
+
+    # Delete old bookmark first if one exists. Also makes a backup of the
+    # bookmark file so don't make another backup in this function.
+    local delete_msg="Old bookmark deleted."
+    local should_report_failure=0
+    _shmark_delete "$curdir" || true  # continue regardless
+
+    # Output line format:  label|directory|creation date|last visited
+    local bookmark="$label|$curdir|$curdate|$curdate"
+    echo "$bookmark" >> "$SHMARK_FILE"
+    echo >&2 "Bookmark appended for '$curdir'."
 }
 
 _shmark_insert() {
