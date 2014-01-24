@@ -261,8 +261,8 @@ shmark() {
     # Process options
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -[0-9]*)
-                if [[ "$1" =~ ^-[0-9]+$ ]]; then
+            -[1-9]*)
+                if [[ "$1" =~ ^-[1-9][0-9]*$ ]]; then
                     _shmark_cd $1
                 else
                     echo >&2 "Error: Bad option: $1"
@@ -431,7 +431,7 @@ _shmark_list_index() {
 
 _shmark_find_line() {
     local dir
-    if [[ "$1" =~ ^[0-9]+$ ]]; then
+    if [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
         dir="$(_shmark_list_index $1)"
     else
         dir="$1"
@@ -456,7 +456,7 @@ _shmark_validate_num() {
 _shmark_cd() {
     echo "DEBUG: ${FUNCNAME}(): $1"
     local dir
-    if [[ "$1" =~ ^-[0-9]+$ ]]; then
+    if [[ "$1" =~ ^-[1-9][0-9]*$ ]]; then
         dir="$(_shmark_list_index ${1#-})"
     else
         dir="$1"
