@@ -109,6 +109,13 @@ ACTIONS
 $(_shmark_actions_help)
 
 OPTIONS
+    -#
+        Shortcut to go (cd) to a directory bookmark by its list position
+        (available from the 'list' command). Just prefix the list
+        position number (#) with a hyphen, e.g.:
+
+            shmark -2
+
     -f bookmark_file
         Use the specified bookmark file instead of the configured file.
 
@@ -154,30 +161,36 @@ _shmark_actions_help() {
         output if the 'list' command.
 
     cd|go BOOKMARK
-    cd|go -#
-        Go (cd) to the specified directory BOOKMARK. The directory can
-        be specified by its full path (available with tab completion
-        from a partially typed path) or by specifying the bookmark's
-        list position (number) prefixed with a hyphen, e.g., '-2'. The
-        list position can be found using the 'list' action.
+    cd|go NUMBER
+        Go (cd) to the specified directory BOOKMARK. The bookmarked
+        directory can be specified by its full path (available with tab
+        completion from a partially typed path) or by specifying the
+        bookmark's list position NUMBER. The list position can be found
+        using the 'list' action.
+
+        A shortcut to go to a bookmark by its list position is to just
+        prefix the list position NUMBER with a hyphen without using the
+        'cd' or 'go' keywords, e.g.:
+
+            shmark -2
 
     chcat|cc CATEGORY BOOKMARK
-    chcat|cc CATEGORY -#
-        Change the CATEGORY of the specified BOOKMARK. The directory can
-        be specified by its full path (available with tab completion
-        from a partially typed path) or by specifying the bookmark's
-        list position (number) prefixed with a hyphen, e.g., '-2'. The
-        list position can be found using the 'list' action.
+    chcat|cc CATEGORY NUMBER
+        Change the CATEGORY of the specified BOOKMARK. The bookmarked
+        directory can be specified by its full path (available with tab
+        completion from a partially typed path) or by specifying the
+        bookmark's list position NUMBER. The list position can be found
+        using the 'list' action.
 
         Tab completion can also be used for the CATEGORY.
 
     del|rm BOOKMARK
-    del|rm -#
+    del|rm NUMBER
         Delete the specified directory BOOKMARK from the bookmarks file.
-        The directory can be specified by its full path (available with
-        tab completion from a partially typed path) or by specifying the
-        bookmark's list position (number) prefixed with a hyphen, e.g.,
-        '-2'. The list position can be found using the 'list' action.
+        The bookmarked directory can be specified by its full path
+        (available with tab completion from a partially typed path) or
+        by specifying the bookmark's list position NUMBER. The list
+        position can be found using the 'list' action.
 
     edit|ed
         Open the bookmarks file in the default EDITOR.
@@ -268,6 +281,16 @@ shmark() {
                     echo >&2 "Error: Bad option: $1"
                     _shmark_usage
                 fi
+                return $?
+                ;;
+            '-#')
+                printf >&2 "%s\n" \
+                    "Error: Bad option: $1" \
+                    "Were you trying to specify a list postion number? E.g.:" \
+                    "" \
+                    "    shmark -2" \
+                    ""
+                _shmark_usage
                 return $?
                 ;;
             -f)
@@ -456,8 +479,8 @@ _shmark_validate_num() {
 _shmark_cd() {
     echo "DEBUG: ${FUNCNAME}(): $1"
     local dir
-    if [[ "$1" =~ ^-[1-9][0-9]*$ ]]; then
-        dir="$(_shmark_list_index ${1#-})"
+    if [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
+        dir="$(_shmark_list_index ${1})"
     else
         dir="$1"
     fi
