@@ -492,7 +492,7 @@ _shmark_cd() {
     }
     cd "$expanded_path" && pwd && ls # NOTE: 'ls' is just for testing
 
-    # TODO: Update 'last visited' field for directory in bookmark file.
+    # TODO: Update 'last visited' field for directory in bookmark file. <>
     echo "TODO: ${FUNCNAME}(): Update 'last visited' field in bookmark file"
 }
 
@@ -631,14 +631,20 @@ _shmark_insert() {
     echo >&2 "Bookmark for '$curdir' inserted into bookmarks file."
 }
 
-# FIXME: Fails if the line to delete is the only line in file. ('ed' limitation)
 _shmark_delete() {
     local delete_msg="${delete_msg:-Bookmark deleted.}"
     local should_report_failure="${should_report_failure:-1}"
     local line_num=$(_shmark_find_line "$1")
     if [[ "$line_num" =~ ^[1-9][0-9]*$ ]]; then
         cp -p ${SHMARK_FILE}{,.bak}
-        printf '%s\n' "${line_num}d" . w | ed -s "$SHMARK_FILE" >/dev/null
+        if [[ $(wc -l < "$SHMARK_FILE") -eq 1 ]]; then
+            # 'ed' seemingly can't delete all lines from a file, so just
+            # redirect nothing to overwrite the file contents if there is only
+            # one line remaining:
+            > "$SHMARK_FILE"
+        else
+            printf '%s\n' "${line_num}d" . w | ed -s "$SHMARK_FILE" >/dev/null
+        fi
         echo >&2 "$delete_msg"
         return 0
     else
@@ -657,8 +663,8 @@ _shmark_edit() {
     $editor "$SHMARK_FILE"
 }
 
+# TODO: Fold long lines, breaking on path delimiters. <>
 _shmark_list() {
-    # TODO: Fold long lines, breaking on path delimiters. <>
     local dir_only=${dir_only:-0}
     local i=1
     local n label result escaped_label
