@@ -440,16 +440,61 @@ shmark() {
 
 # == UTILITY FUNCTIONS ==
 
-_shmark_list_parse() {
-    local result
+_shmark_format_list_items() {
+    local dir_only=$1
+    local idx=$2
+    local label="$3"
+    local result width formatted line
+
+    # Find lines with matching category (label):
     result=$(sed -n "s!^$label\|\([^|]*\)\|.*!\1!p" "$SHMARK_FILE")
-    if [[ $dir_only = 1 ]]; then
+
+    if [[ $dir_only -eq 1 ]]; then
         echo "$result"
     else
-        local width=$( echo $(printf $(wc -l < "$SHMARK_FILE") | wc -c) )
-        width=$(( width + 2 ))  # indent list items two spaces
-        nl -w $width -s ') ' -v $i <<< "$result"
+        # Get the number of digits in the last line number:
+        width=$( echo $(printf $(wc -l < "$SHMARK_FILE") | wc -c) )
+        # Indent list items two spaces:
+        width=$(( width + 2 ))
+        # Number the list items:
+        formatted=$(nl -w $width -s ') ' -v $idx <<< "$result")
+        # Wrap long lines:
+        while IFS= read -r line; do
+            _shmark_wrap_long_line 80 '/' "      " "$line"
+        done <<< "$formatted"
     fi
+}
+
+_shmark_wrap_long_line() {
+    # Usage:  _shmark_wrap_long_line WIDTH DELIMITER INDENT LINE
+    local width="$1"      # maximum line width
+    local delimiter="$2"  # delimiter for splitting line
+    local indent="$3"     # indent for wrapped lines (literal characters)
+    local line="$4"       # the line to wrap
+    local wrapped_line=
+    local tmp final_line segments item
+    if [ ${#line} -gt $width ]; then
+        while IFS=$delimiter read -ra segments; do
+            for item in "${segments[@]}"; do
+                if [ -n "$wrapped_line" ]; then
+                    tmp="${wrapped_line}/$item"
+                    if [ $(tail -1 <<< "$tmp" | tr -d '\n' | wc -c) -lt $width ]
+                    then
+                        wrapped_line="$tmp"
+                    else
+                        wrapped_line="${wrapped_line}/"$'\n'"${indent}${item}"
+                    fi
+                else
+                    wrapped_line="$item"
+                fi
+                #echo DEBUG:; echo "$wrapped_line"
+            done
+            final_line="$wrapped_line"
+        done <<< "$line"
+    else
+        final_line="$line"
+    fi
+    echo "$final_line"
 }
 
 _shmark_get_directory_from_list_index() {
@@ -710,7 +755,6 @@ _shmark_edit() {
     $editor "$SHMARK_FILE"
 }
 
-# TODO: Fold long lines, breaking on path delimiters. <>
 _shmark_list() {
     local dir_only=${dir_only:-0}
     local i=1
@@ -729,7 +773,7 @@ _shmark_list() {
         escaped_label=$(sed -E 's/[]\.*+?$|(){}[^-]/\\&/g' <<< "$label")
         n=$(grep -c "^$escaped_label" "$SHMARK_FILE")
         [[ $dir_only -eq 1 ]] || echo "$label"
-        _shmark_list_parse
+        _shmark_format_list_items $dir_only $i "$label"
         i=$((i + n))
     done <<< "$(_shmark_list_categories)"
 
@@ -737,7 +781,7 @@ _shmark_list() {
     if [[ $missing_label -eq 1 ]]; then
         label=""
         [[ $dir_only -eq 1 ]] || echo "MISCELLANEOUS"
-        _shmark_list_parse
+        _shmark_format_list_items $dir_only $i "$label"
     fi
 }
 
