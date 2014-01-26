@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2014-01-23 Last modified
+# @date    2014-01-25 Last modified
 # @date    2014-01-18 First version
 # @author  Steve Wheeler
 #
@@ -201,10 +201,15 @@ _shmark_actions_help() {
     insert|ins LIST_POSITION
         Insert a bookmark for the current directory at a specific list
         position. List positions can be found in the output of the
-        'list' action. A bookmark can be appended to the end of the list
-        by giving a list position that is greater than the last
-        position, but the 'append' command is made specifically for
-        appending.
+        'list' action. The bookmark currently occupying the target list
+        position as well as any bookmarks following it will all be
+        pushed down one position.
+
+        A bookmark can be appended to the end of the list by giving a
+        list position that is greater than the last position, but the
+        'append' command is made specifically for appending.
+        Additionally, the 'append' command can append to specific
+        categories rather than only the last listed category.
 
     list|ls
         Show a list of saved bookmarks. Bookmarks are listed by category
@@ -447,15 +452,25 @@ _shmark_list_parse() {
     fi
 }
 
-_shmark_list_index() {
+_shmark_get_directory_from_list_index() {
+    # @param  integer List position
+    # @return string  Bookmarked directory path at given list position
     [[ -s "$SHMARK_FILE" ]] || return
     sed "$1"'q;d' <<< "$(_shmark_listdir)"
 }
 
-_shmark_find_line() {
+_shmark_get_list_index_from_directory() {
+    # @param  string  Bookmarked directory path
+    # @return integer List position of given bookmarked directory
+    _shmark_listdir | grep -n -m1 "^${1}$" | cut -d: -f1
+}
+
+_shmark_get_line_number() {
+    # @param  string|integer  Directory path or its list position
+    # @return integer         Line number in bookmarks file for given directory
     local dir
     if [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
-        dir="$(_shmark_list_index $1)"
+        dir="$(_shmark_get_directory_from_list_index $1)"
     else
         dir="$1"
     fi
@@ -480,7 +495,7 @@ _shmark_cd() {
     echo "DEBUG: ${FUNCNAME}(): $1"
     local dir
     if [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
-        dir="$(_shmark_list_index ${1})"
+        dir="$(_shmark_get_directory_from_list_index $1)"
     else
         dir="$1"
     fi
@@ -531,11 +546,10 @@ _shmark_append() {
 }
 
 _shmark_insert() {
-    local line_num list_pos msg delete_succeeded
+    local line_num list_pos msg
     local ed_cmd=
     local line_total=$(echo $(wc -l < "$SHMARK_FILE"))
-    local np=$((line_total + 1)) # 'np' = "next position" (needed a short var)
-
+    local np=$((line_total + 1)) # 'np' = "next position" - need short var for:
     local default_errmsg=$( printf "%s\n" \
         "Error: The 'insert' action requires a number argument chosen" \
         "       from the bookmarks list. To append as the last bookmark," \
@@ -575,7 +589,7 @@ _shmark_insert() {
 
     # Find out the line number in the bookmarks file for the bookmark at
     # this list position.
-    line_num=$(_shmark_find_line "$list_pos")
+    line_num=$(_shmark_get_line_number "$list_pos")
 
     # Now check that the line number is a number and is not zero:
     _shmark_validate_num "$line_num" "$default_errmsg"
@@ -586,41 +600,43 @@ _shmark_insert() {
     local curdate="$(date '+%F %T')"
 
     #printf >&2 "DEBUG: ${FUNCNAME}(): %s\n" \
-    #    "list_pos = $list_pos" \
-    #    "line_num = $line_num" \
-    #    "label    = $label"
+    #    "line_total = $line_total" \
+    #    "list_pos   = $list_pos" \
+    #    "line_num   = $line_num" \
+    #    "label      = $label"    \
+    #    "curdir     = $curdir"
     #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
 
-    # Delete old bookmark first if one exists. This also makes a backup of
-    # the bookmark file so don't make another backup in this function.
-    local delete_msg="Old bookmark deleted."
-    local should_report_failure=0
-    if _shmark_delete "$curdir"; then
-        delete_succeeded=1
-    else
-        delete_succeeded=0
+    # If there is already an existing bookmark for the current directory,
+    # find its line number before deleting it.
+    local cur_line_num=$(_shmark_get_line_number "$curdir")
+    if [ -n "$cur_line_num" ]; then
+        # Find the list position of the old bookmark (so we can adjust the
+        # target position if neccesary after deleting the old bookmark):
+        local cur_list_pos=$(_shmark_get_list_index_from_directory "$curdir")
+        # Delete the old bookmark:
+        local delete_msg="Old bookmark deleted."
+        local should_report_failure=0  # set to 1 for debugging
+        _shmark_delete "$cur_list_pos"
+        # If the line number for the old bookmark was less than the target
+        # line number, decrement both the target line number (to reflect the
+        # new target number) and the line total:
+        (( cur_line_num < line_num )) && (( line_num--, line_total-- ))
+        # If the old bookmark list position was above the target list
+        # position, then decrement the target postion:
+        (( cur_list_pos < list_pos )) && (( list_pos-- ))
     fi
-
-    # FIXME: This assumes that an old bookmark being deleted is on a
-    # line above the destination line. That is not always the case. Both
-    # this function and the 'delete' function will need to be reworked.
-    # The line number for the bookmark to delete needs to be obtained
-    # in this function, not the 'delete' function, so that it can be
-    # compared to the target line number. <>
-    if [[ -z "$ed_cmd" ]]; then
-        if [[ $line_num -eq $line_total && $delete_succeeded -eq 1 ]]; then
-            # If line number specified is the last line of the file, and an
-            # old bookmark was deleted, then that line number is no longer
-            # valid. So tell 'ed' to append the line to the end of the file.
-            ed_cmd='$a'
-        else
-            # Okay, we have a valid line number for inserting the new line.
-            ed_cmd="${line_num}i"
-        fi
-    fi
-
     #printf >&2 "DEBUG: ${FUNCNAME}(): %s\n" \
-    #    "ed_cmd   = $ed_cmd"
+    #    "line_total = $line_total" \
+    #    "list_pos   = $list_pos" \
+    #    "line_num   = $line_num" \
+    #    "label      = $label"    \
+    #    "curdir     = $curdir"
+
+    # If we don't have an 'ed' command yet, that means we're inserting:
+    [[ -z "$ed_cmd" ]] && ed_cmd="${line_num}i"
+
+    #echo >&2 "DEBUG: ${FUNCNAME}(): ed_cmd   = $ed_cmd"
 
     # Output line format:  label|directory|creation date|last visited
     local bookmark="$label|$curdir|$curdate|$curdate"
@@ -632,9 +648,10 @@ _shmark_insert() {
 }
 
 _shmark_delete() {
+    # @param  string|integer  Directory path or its list position
     local delete_msg="${delete_msg:-Bookmark deleted.}"
     local should_report_failure="${should_report_failure:-1}"
-    local line_num=$(_shmark_find_line "$1")
+    local line_num=$(_shmark_get_line_number "$1")
     if [[ "$line_num" =~ ^[1-9][0-9]*$ ]]; then
         cp -p ${SHMARK_FILE}{,.bak}
         if [[ $(wc -l < "$SHMARK_FILE") -eq 1 ]]; then
