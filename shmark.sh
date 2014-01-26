@@ -43,17 +43,42 @@
 
 SHMARK_VERSION="@@VERSION@@"
 
-#: ${SHMARK_FILE:=bookmarks.example}
-: ${SHMARK_FILE:="~/Desktop/test.noindex/bookmarks"}
-SHMARK_FILE="${SHMARK_FILE/#~/$HOME}" # expand tilde to home directory path
-#echo "DEBUG: $SHMARK_FILE"; return 1
+## == SETUP ==
 
-[[ -f "$SHMARK_FILE" ]] || touch "$SHMARK_FILE" || {
-    echo >&2 "Couldn't create a bookmarks file at '$SHMARK_FILE'"
-    kill -SIGINT $$
-}
+# Assign a null value if the bookmark file variable is undefined:
+: ${SHMARK_FILE:=}
 
+# If null, use a default value:
+if [[ -z "$SHMARK_FILE" ]]; then
+    if [[ -d "${HOME}/var/shmark" ]]; then
+        # Avoid creating another dot file/dir if an alternate has been set up
+        SHMARK_FILE="${HOME}/var/shmark/bookmarks"
+    else
+        # Default to creating a dot directory
+        SHMARK_FILE="${HOME}/.shmark/bookmarks"
+        [[ -d "${HOME}/.shmark" ]] || mkdir -m0700 "${HOME}/.shmark" || {
+            echo >&2 "Couldn't create directory at '${HOME}/.shmark'"
+            kill -SIGINT $$
+        }
+    fi
+fi
+
+# Expand tilde for home directory path:
+SHMARK_FILE="${SHMARK_FILE/#~/$HOME}"
+
+# Create bookmarks file if one doesn't exist:
+[[ -f "$SHMARK_FILE" ]] \
+    || { touch "$SHMARK_FILE" && chmod 600 "$SHMARK_FILE" ; } \
+    || { echo >&2 "Couldn't create a bookmarks file at '$SHMARK_FILE'"
+         kill -SIGINT $$ ; }
+
+# Check if a default action has been defined. (The default action is used if
+# 'shmark' is run without any action.) This environment variable can be set
+# in .bash_profile or .bashrc. Make sure it is set before this functions file
+# is sourced.
 : ${SHMARK_DEFAULT_ACTION:=}
+
+#echo "DEBUG: $SHMARK_FILE  (exiting early...)"; return 1
 
 # == INFO FUNCTIONS ==
 
@@ -751,7 +776,7 @@ _shmark_delete() {
 
 _shmark_edit() {
     local editor=${EDITOR-vi}
-    echo >&2 "*** Editing bookmarks file (${SHMARK_FILE/#$HOME/~})..."
+    echo >&2 "Editing bookmarks file (${SHMARK_FILE/#$HOME/~})..."
     $editor "$SHMARK_FILE"
 }
 
