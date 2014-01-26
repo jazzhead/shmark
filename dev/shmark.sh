@@ -18,13 +18,14 @@
 # need to be sourced into the shell environment and tested directly from the
 # shell instead of this wrapper script.
 #
+# @date    2014-01-26 Last modified
 # @date    2014-01-21 First version
 # @author  Steve Wheeler
 #
 ##############################################################################
 PROGNAME="${0##*/}"
 
-. ./shmark.sh
+. ./shmark.sh || exit $?
 
 #echo >&2 "DEBUG: ${PROGNAME}: running..."
 
