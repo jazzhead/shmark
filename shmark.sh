@@ -281,7 +281,7 @@ shmark() {
         case "$1" in
             -[1-9]*)
                 if [[ "$1" =~ ^-[1-9][0-9]*$ ]]; then
-                    _shmark_cd $1
+                    _shmark_cd ${1#-}
                 else
                     echo >&2 "Error: Bad option: $1"
                     _shmark_usage
