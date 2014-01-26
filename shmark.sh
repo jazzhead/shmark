@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2014-01-25 Last modified
+# @date    2014-01-26 Last modified
 # @date    2014-01-18 First version
 # @author  Steve Wheeler
 #
@@ -489,26 +489,56 @@ _shmark_validate_num() {
     fi
 }
 
+_shmark_update_last_visited() {
+    # @param  string A directory bookmark line (pipe-delimited, four fields)
+    # @return string Updated bookmark with current date for last field
+    local line="$1"
+    printf "%s|%s\n" "$(cut -d\| -f1-3 <<< "$line")" "$(date '+%F %T')"
+    # Bookmark format:  label|directory|creation date|last visited
+}
+
+_shmark_replace_line() { # void
+    # Replaces line in bookmarks file
+    # @param integer Line number from bookmarks file
+    # @param string  The replacement text (a formatted directory bookmark)
+    local line_num="$1"; shift
+    local line="$1"
+    cp -p ${SHMARK_FILE}{,.bak}
+    printf '%s\n' "${line_num}c" "$line" . w |
+    ed -s "$SHMARK_FILE" >/dev/null
+}
+
 # == ACTIONS ==
 
 _shmark_cd() {
-    echo "DEBUG: ${FUNCNAME}(): $1"
-    local dir
+    local dir absolute_path line_num bookmark
+
+    # Get bookmark directory path (for searching bookmarks file):
     if [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
         dir="$(_shmark_get_directory_from_list_index $1)"
     else
-        dir="$1"
+        dir="${1/#$HOME/~}" # HOME is replaced with tilde in bookmarks file
     fi
-    echo "DEBUG: ${FUNCNAME}(): $dir"
-    local expanded_path="${dir/#~/$HOME}"
-    [[ -d "$expanded_path" ]] || {
+
+    # Need the absolute path (no tilde) for changing directories:
+    absolute_path="${dir/#~/$HOME}"
+    [[ -d "$absolute_path" ]] || {
         echo >&2 "Error: No such directory: '$dir'"
         return 1
     }
-    cd "$expanded_path" && pwd && ls # NOTE: 'ls' is just for testing
 
-    # TODO: Update 'last visited' field for directory in bookmark file. <>
-    echo "TODO: ${FUNCNAME}(): Update 'last visited' field in bookmark file"
+    # Go to the directory (and optionally pwd):
+    cd "$absolute_path" && echo >&2 "${PWD/#$HOME/~}"
+
+    # Get line number for updating the bookmarks file:
+    line_num=$(_shmark_get_line_number "$dir")
+
+    # Update the directory's 'last visited' field in the bookmarks file:
+    bookmark=$(sed $line_num'q;d' "$SHMARK_FILE")
+    bookmark=$(_shmark_update_last_visited "$bookmark")
+    _shmark_replace_line $line_num "$bookmark"
+
+    return 0
 }
 
 _shmark_add() {
