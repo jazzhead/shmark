@@ -149,6 +149,22 @@ OPTIONS
 
     -V|--version
         Print version information.
+
+BOOKMARKS FILE
+    The bookmarks file is a plaintext file with each line representing a
+    directory bookmark. Each bookmark consists of four pipe-delimited
+    fields:
+
+        category|directory|date added|last visited
+
+    For example:
+
+        @CURRENT|~/Desktop/foo|2014-01-17 19:12:40|2014-01-17 19:12:40
+
+    The 'last visited' field is updated each time the 'cd' (or 'go')
+    action is used to change to a bookmarked directory. Both date fields
+    are updated whenever the 'add', 'append' or 'insert' actions are
+    used on a directory.
 ___EndHelp___
     return 0
 }
@@ -564,7 +580,7 @@ _shmark_update_last_visited() {
     # @return string Updated bookmark with current date for last field
     local line="$1"
     printf "%s|%s\n" "$(cut -d\| -f1-3 <<< "$line")" "$(date '+%F %T')"
-    # Bookmark format:  label|directory|creation date|last visited
+    # Bookmark format:  category|directory|date added|last visited
 }
 
 _shmark_replace_line() { # void
@@ -622,7 +638,7 @@ _shmark_add() {
     local should_report_failure=0
     _shmark_delete "$curdir" || true  # continue regardless
 
-    # Output line format:  label|directory|creation date|last visited
+    # Output line format:  category|directory|date added|last visited
     local bookmark="$label|$curdir|$curdate|$curdate"
     printf '%s\n' 0a "$bookmark" . w | ed -s "$SHMARK_FILE"
     echo >&2 "Bookmark added for '$curdir'."
@@ -639,7 +655,7 @@ _shmark_append() {
     local should_report_failure=0
     _shmark_delete "$curdir" || true  # continue regardless
 
-    # Output line format:  label|directory|creation date|last visited
+    # Output line format:  category|directory|date added|last visited
     local bookmark="$label|$curdir|$curdate|$curdate"
     echo "$bookmark" >> "$SHMARK_FILE"
     echo >&2 "Bookmark appended for '$curdir'."
@@ -738,7 +754,7 @@ _shmark_insert() {
 
     #echo >&2 "DEBUG: ${FUNCNAME}(): ed_cmd   = $ed_cmd"
 
-    # Output line format:  label|directory|creation date|last visited
+    # Output line format:  category|directory|date added|last visited
     local bookmark="$label|$curdir|$curdate|$curdate"
 
     #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
