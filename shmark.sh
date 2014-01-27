@@ -389,7 +389,8 @@ shmark() {
             shift
             if [[ $# -eq 0 ]]; then
                 echo >&2 "Error: The 'cd' action requires an argument."
-                return
+                _shmark_usage
+                return $?
             fi
             _shmark_cd "$1"
             ;;
@@ -433,7 +434,8 @@ shmark() {
             shift
             if [[ $# -eq 0 ]]; then
                 echo >&2 "Error: The 'delete' action requires an argument."
-                return
+                _shmark_usage
+                return $?
             fi
             _shmark_delete "$1"
             ;;
@@ -452,8 +454,9 @@ shmark() {
                 _shmark_chcat "$@"
             else
                 echo >&2 "Error: The 'chcat' action requires two arguments."
-                return
+                _shmark_usage
             fi
+            return $?
             ;;
 
         help)       # show detailed help
@@ -475,6 +478,7 @@ shmark() {
         *)
             echo >&2 "Error: Unknown action: $action"
             _shmark_usage
+            return $?
             ;;
     esac
 }
