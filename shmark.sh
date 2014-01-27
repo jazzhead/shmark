@@ -397,12 +397,12 @@ shmark() {
 
         add|a)      # add bookmark for current directory to top of file
             shift
-            _shmark_add "${1:-}" # 'label' argument optional
+            _shmark_add "${1:-}" # 'category' argument optional
             ;;
 
         append|app) # append bookmark for current directory to bottom of file
             shift
-            _shmark_append "${1:-}" # 'label' argument optional
+            _shmark_append "${1:-}" # 'category' argument optional
             ;;
 
         insert|ins) # insert a bookmark at a specific list position
@@ -418,7 +418,7 @@ shmark() {
             _shmark_list_categories
             ;;
 
-        listdir|lsd)    # show bookmarked directories only w/o labels & line #s
+        listdir|lsd) # show bookmarked directories only w/o categories, line #s
             _shmark_listdir
             ;;
 
@@ -488,11 +488,11 @@ shmark() {
 _shmark_format_list_items() {
     local dir_only=$1
     local idx=$2
-    local label="$3"
+    local category="$3"
     local result width formatted line
 
-    # Find lines with matching category (label):
-    result=$(sed -n "s!^$label\|\([^|]*\)\|.*!\1!p" "$SHMARK_FILE")
+    # Find lines with matching category:
+    result=$(sed -n "s!^$category\|\([^|]*\)\|.*!\1!p" "$SHMARK_FILE")
 
     if [[ $dir_only -eq 1 ]]; then
         echo "$result"
@@ -642,7 +642,7 @@ _shmark_cd() {
 }
 
 _shmark_add() {
-    local label="$1" || return
+    local category="$1" || return
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
     local curdate="$(date '+%F %T')"
 
@@ -653,13 +653,13 @@ _shmark_add() {
     _shmark_delete "$curdir" || true  # continue regardless
 
     # Output line format:  category|directory|date added|last visited
-    local bookmark="$label|$curdir|$curdate|$curdate"
+    local bookmark="$category|$curdir|$curdate|$curdate"
     printf '%s\n' 0a "$bookmark" . w | ed -s "$SHMARK_FILE"
     echo >&2 "Bookmark added for '$curdir'."
 }
 
 _shmark_append() {
-    local label="$1" || return
+    local category="$1" || return
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
     local curdate="$(date '+%F %T')"
 
@@ -670,7 +670,7 @@ _shmark_append() {
     _shmark_delete "$curdir" || true  # continue regardless
 
     # Output line format:  category|directory|date added|last visited
-    local bookmark="$label|$curdir|$curdate|$curdate"
+    local bookmark="$category|$curdir|$curdate|$curdate"
     echo "$bookmark" >> "$SHMARK_FILE"
     echo >&2 "Bookmark appended for '$curdir'."
 }
@@ -725,7 +725,7 @@ _shmark_insert() {
     _shmark_validate_num "$line_num" "$default_errmsg"
 
     # Need category of bookmark currently occupying target list position
-    local label=$(awk -F\| 'NR=='$line_num' {print $1}' "$SHMARK_FILE")
+    local category=$(awk -F\| 'NR=='$line_num' {print $1}' "$SHMARK_FILE")
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
     local curdate="$(date '+%F %T')"
 
@@ -733,7 +733,7 @@ _shmark_insert() {
     #    "line_total = $line_total" \
     #    "list_pos   = $list_pos" \
     #    "line_num   = $line_num" \
-    #    "label      = $label"    \
+    #    "category   = $category" \
     #    "curdir     = $curdir"
     #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
 
@@ -760,7 +760,7 @@ _shmark_insert() {
     #    "line_total = $line_total" \
     #    "list_pos   = $list_pos" \
     #    "line_num   = $line_num" \
-    #    "label      = $label"    \
+    #    "category   = $category" \
     #    "curdir     = $curdir"
 
     # If we don't have an 'ed' command yet, that means we're inserting:
@@ -769,7 +769,7 @@ _shmark_insert() {
     #echo >&2 "DEBUG: ${FUNCNAME}(): ed_cmd   = $ed_cmd"
 
     # Output line format:  category|directory|date added|last visited
-    local bookmark="$label|$curdir|$curdate|$curdate"
+    local bookmark="$category|$curdir|$curdate|$curdate"
 
     #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
 
@@ -813,30 +813,30 @@ _shmark_edit() {
 _shmark_list() {
     local dir_only=${dir_only:-0}
     local i=1
-    local n label result escaped_label
-    local missing_label=0
+    local n category result escaped_category
+    local missing_category=0
     local include_blank_categories=1
 
     [[ -s "$SHMARK_FILE" ]] || return
 
-    while read -r label; do
-        if [[ -z "$label" ]]; then
+    while read -r category; do
+        if [[ -z "$category" ]]; then
             # Skip uncategorized bookmarks for now. Add them at the bottom.
-            missing_label=1
+            missing_category=1
             continue
         fi
-        escaped_label=$(sed -E 's/[]\.*+?$|(){}[^-]/\\&/g' <<< "$label")
-        n=$(grep -c "^$escaped_label" "$SHMARK_FILE")
-        [[ $dir_only -eq 1 ]] || echo "$label"
-        _shmark_format_list_items $dir_only $i "$label"
+        escaped_category=$(sed -E 's/[]\.*+?$|(){}[^-]/\\&/g' <<< "$category")
+        n=$(grep -c "^$escaped_category" "$SHMARK_FILE")
+        [[ $dir_only -eq 1 ]] || echo "$category"
+        _shmark_format_list_items $dir_only $i "$category"
         i=$((i + n))
     done <<< "$(_shmark_list_categories)"
 
-    # Now add any uncategorized bookmarks using a default label
-    if [[ $missing_label -eq 1 ]]; then
-        label=""
+    # Now add any uncategorized bookmarks using a default category
+    if [[ $missing_category -eq 1 ]]; then
+        category=""
         [[ $dir_only -eq 1 ]] || echo "MISCELLANEOUS"
-        _shmark_format_list_items $dir_only $i "$label"
+        _shmark_format_list_items $dir_only $i "$category"
     fi
 }
 
