@@ -562,14 +562,14 @@ _shmark_get_line_number() {
     if [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
         dir="$(_shmark_get_directory_from_list_index $1)"
     else
-        dir="$1"
+        dir="${1/#$HOME/~}" # bookmarks file uses tildes for HOME
     fi
     fgrep -n -m1 "|${dir}|" "$SHMARK_FILE" | cut -d: -f1
 }
 
 _shmark_validate_num() {
-    local num="$1"; shift
-    local msg="$1"
+    local num="$1"
+    local msg="$2"
     if [[ ! "$num" =~ ^[1-9][0-9]*$ ]]; then
         echo >&2 "$msg"
         echo >&2 ""
@@ -587,12 +587,22 @@ _shmark_update_last_visited() {
     # Bookmark format:  category|directory|date added|last visited
 }
 
+_shmark_update_category() {
+    # @param  string A directory bookmark line (pipe-delimited, four fields)
+    # @param  string New category
+    # @return string Updated bookmark with new category as first field
+    local line="$1"
+    local category="$2"
+    printf "%s|%s\n" "$category" "$(cut -d\| -f2-4 <<< "$line")"
+    # Bookmark format:  category|directory|date added|last visited
+}
+
 _shmark_replace_line() { # void
     # Replaces line in bookmarks file
     # @param integer Line number from bookmarks file
     # @param string  The replacement text (a formatted directory bookmark)
-    local line_num="$1"; shift
-    local line="$1"
+    local line_num="$1"
+    local line="$2"
     cp -p ${SHMARK_FILE}{,.bak}
     printf '%s\n' "${line_num}c" "$line" . w |
     ed -s "$SHMARK_FILE" >/dev/null
@@ -868,6 +878,21 @@ _shmark_undo() {
 }
 
 _shmark_chcat() {
-    echo >&2 "TODO: ${FUNCNAME}()"
+    local category="$1"
+    local line_num=$(_shmark_get_line_number "$2")
+    local errmsg=$( printf "%s\n" \
+        "Error: The 'chcat' action requires two arguments: a category and" \
+        "       either a bookmark directory path or a number chosen from" \
+        "       the bookmarks list." \
+        "Usage: shmark chcat CATEGORY BOOKMARK|NUMBER"
+    )
+
+    _shmark_validate_num "$line_num" "$errmsg"
+
+    bookmark=$(sed $line_num'q;d' "$SHMARK_FILE")   # get existing bookmark
+    bookmark=$(_shmark_update_category "$bookmark" "$category") # update it
+    _shmark_replace_line $line_num "$bookmark"     # replace it in the file
+
+    return 0
 }
 
