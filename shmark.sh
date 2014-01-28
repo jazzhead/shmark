@@ -393,12 +393,7 @@ shmark() {
     case "$action" in
         cd|go)      # go (cd) to bookmarked directory
             shift
-            if [[ $# -eq 0 ]]; then
-                echo >&2 "Error: The 'cd' action requires an argument."
-                _shmark_usage
-                return $?
-            fi
-            _shmark_cd "$1"
+            _shmark_cd "$@"
             ;;
 
         add|a)      # add bookmark for current directory to top of file
@@ -493,6 +488,12 @@ shmark() {
 # == ACTIONS ==
 
 _shmark_cd() {
+    if [[ $# -eq 0 ]]; then
+        echo >&2 "Error: The 'cd' action requires an argument."
+        _shmark_usage
+        return $?
+    fi
+
     local dir absolute_path line_num bookmark
 
     # Get bookmark directory path (for searching bookmarks file):
@@ -510,15 +511,22 @@ _shmark_cd() {
     }
 
     # Go to the directory (and optionally pwd):
-    cd "$absolute_path" && echo >&2 "${PWD/#$HOME/~}"
+    cd "$absolute_path" || {
+        echo >&2 "Error: Couldn't change to directory: '$dir'"
+        return 1
+    }
+    echo >&2 "${PWD/#$HOME/~}"
 
     # Get line number for updating the bookmarks file:
     line_num=$(_shmark_get_line_number "$dir")
+    [[ -n "$line_num" ]] || return 0
 
     # Update the directory's 'last visited' field in the bookmarks file:
-    bookmark=$(sed $line_num'q;d' "$SHMARK_FILE")
-    bookmark=$(_shmark_update_last_visited "$bookmark")
-    _shmark_replace_line $line_num "$bookmark"
+    bookmark=$(sed $line_num'q;d' "$SHMARK_FILE") || return 0
+    if [ -n "$bookmark" ]; then
+        bookmark=$(_shmark_update_last_visited "$bookmark")
+        _shmark_replace_line $line_num "$bookmark"
+    fi
 
     return 0
 }
