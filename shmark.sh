@@ -43,6 +43,7 @@
 
 SHMARK_VERSION="@@VERSION@@"
 
+
 ## == SETUP ==
 
 # Assign a null value if the bookmark file variable is undefined:
@@ -79,6 +80,7 @@ SHMARK_FILE="${SHMARK_FILE/#~/$HOME}"
 : ${SHMARK_DEFAULT_ACTION:=}
 
 #echo "DEBUG: $SHMARK_FILE  (exiting early...)"; return 1
+
 
 # == INFO FUNCTIONS ==
 
@@ -312,6 +314,7 @@ ___EndVersion___
     return 0
 }
 
+
 # == MAIN FUNCTION ==
 
 shmark() {
@@ -486,130 +489,6 @@ shmark() {
     esac
 }
 
-# == UTILITY FUNCTIONS ==
-
-_shmark_format_list_items() {
-    local dir_only=$1
-    local idx=$2
-    local category="$3"
-    local result width formatted line
-
-    # Find lines with matching category:
-    result=$(sed -n "s!^$category\|\([^|]*\)\|.*!\1!p" "$SHMARK_FILE")
-
-    if [[ $dir_only -eq 1 ]]; then
-        echo "$result"
-    else
-        # Get the number of digits in the last line number:
-        width=$( echo $(printf $(wc -l < "$SHMARK_FILE") | wc -c) )
-        # Indent list items two spaces:
-        width=$(( width + 2 ))
-        # Number the list items:
-        formatted=$(nl -w $width -s ') ' -v $idx <<< "$result")
-        # Wrap long lines:
-        while IFS= read -r line; do
-            _shmark_wrap_long_line 80 '/' "      " "$line"
-        done <<< "$formatted"
-    fi
-}
-
-_shmark_wrap_long_line() {
-    # Usage:  _shmark_wrap_long_line WIDTH DELIMITER INDENT LINE
-    local width="$1"      # maximum line width
-    local delimiter="$2"  # delimiter for splitting line
-    local indent="$3"     # indent for wrapped lines (literal characters)
-    local line="$4"       # the line to wrap
-    local wrapped_line=
-    local tmp final_line segments item
-    if [ ${#line} -gt $width ]; then
-        while IFS=$delimiter read -ra segments; do
-            for item in "${segments[@]}"; do
-                if [ -n "$wrapped_line" ]; then
-                    tmp="${wrapped_line}/$item"
-                    if [ $(tail -1 <<< "$tmp" | tr -d '\n' | wc -c) -lt $width ]
-                    then
-                        wrapped_line="$tmp"
-                    else
-                        wrapped_line="${wrapped_line}/"$'\n'"${indent}${item}"
-                    fi
-                else
-                    wrapped_line="$item"
-                fi
-                #echo DEBUG:; echo "$wrapped_line"
-            done
-            final_line="$wrapped_line"
-        done <<< "$line"
-    else
-        final_line="$line"
-    fi
-    echo "$final_line"
-}
-
-_shmark_get_directory_from_list_index() {
-    # @param  integer List position
-    # @return string  Bookmarked directory path at given list position
-    [[ -s "$SHMARK_FILE" ]] || return
-    sed "$1"'q;d' <<< "$(_shmark_listdir)"
-}
-
-_shmark_get_list_index_from_directory() {
-    # @param  string  Bookmarked directory path
-    # @return integer List position of given bookmarked directory
-    _shmark_listdir | grep -n -m1 "^${1}$" | cut -d: -f1
-}
-
-_shmark_get_line_number() {
-    # @param  string|integer  Directory path or its list position
-    # @return integer         Line number in bookmarks file for given directory
-    local dir
-    if [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
-        dir="$(_shmark_get_directory_from_list_index $1)"
-    else
-        dir="${1/#$HOME/~}" # bookmarks file uses tildes for HOME
-    fi
-    fgrep -n -m1 "|${dir}|" "$SHMARK_FILE" | cut -d: -f1
-}
-
-_shmark_validate_num() {
-    local num="$1"
-    local msg="$2"
-    if [[ ! "$num" =~ ^[1-9][0-9]*$ ]]; then
-        echo >&2 "$msg"
-        echo >&2 ""
-        _shmark_list >&2
-        echo >&2 ""
-        _shmark_usage
-    fi
-}
-
-_shmark_update_last_visited() {
-    # @param  string A directory bookmark line (pipe-delimited, four fields)
-    # @return string Updated bookmark with current date for last field
-    local line="$1"
-    printf "%s|%s\n" "$(cut -d\| -f1-3 <<< "$line")" "$(date '+%F %T')"
-    # Bookmark format:  category|directory|date added|last visited
-}
-
-_shmark_update_category() {
-    # @param  string A directory bookmark line (pipe-delimited, four fields)
-    # @param  string New category
-    # @return string Updated bookmark with new category as first field
-    local line="$1"
-    local category="$2"
-    printf "%s|%s\n" "$category" "$(cut -d\| -f2-4 <<< "$line")"
-    # Bookmark format:  category|directory|date added|last visited
-}
-
-_shmark_replace_line() { # void
-    # Replaces line in bookmarks file
-    # @param integer Line number from bookmarks file
-    # @param string  The replacement text (a formatted directory bookmark)
-    local line_num="$1"
-    local line="$2"
-    cp -p ${SHMARK_FILE}{,.bak}
-    printf '%s\n' "${line_num}c" "$line" . w |
-    ed -s "$SHMARK_FILE" >/dev/null
-}
 
 # == ACTIONS ==
 
@@ -897,5 +776,131 @@ _shmark_chcat() {
     _shmark_replace_line $line_num "$bookmark"     # replace it in the file
 
     return 0
+}
+
+
+# == UTILITY FUNCTIONS ==
+
+_shmark_format_list_items() {
+    local dir_only=$1
+    local idx=$2
+    local category="$3"
+    local result width formatted line
+
+    # Find lines with matching category:
+    result=$(sed -n "s!^$category\|\([^|]*\)\|.*!\1!p" "$SHMARK_FILE")
+
+    if [[ $dir_only -eq 1 ]]; then
+        echo "$result"
+    else
+        # Get the number of digits in the last line number:
+        width=$( echo $(printf $(wc -l < "$SHMARK_FILE") | wc -c) )
+        # Indent list items two spaces:
+        width=$(( width + 2 ))
+        # Number the list items:
+        formatted=$(nl -w $width -s ') ' -v $idx <<< "$result")
+        # Wrap long lines:
+        while IFS= read -r line; do
+            _shmark_wrap_long_line 80 '/' "      " "$line"
+        done <<< "$formatted"
+    fi
+}
+
+_shmark_wrap_long_line() {
+    # Usage:  _shmark_wrap_long_line WIDTH DELIMITER INDENT LINE
+    local width="$1"      # maximum line width
+    local delimiter="$2"  # delimiter for splitting line
+    local indent="$3"     # indent for wrapped lines (literal characters)
+    local line="$4"       # the line to wrap
+    local wrapped_line=
+    local tmp final_line segments item
+    if [ ${#line} -gt $width ]; then
+        while IFS=$delimiter read -ra segments; do
+            for item in "${segments[@]}"; do
+                if [ -n "$wrapped_line" ]; then
+                    tmp="${wrapped_line}/$item"
+                    if [ $(tail -1 <<< "$tmp" | tr -d '\n' | wc -c) -lt $width ]
+                    then
+                        wrapped_line="$tmp"
+                    else
+                        wrapped_line="${wrapped_line}/"$'\n'"${indent}${item}"
+                    fi
+                else
+                    wrapped_line="$item"
+                fi
+                #echo DEBUG:; echo "$wrapped_line"
+            done
+            final_line="$wrapped_line"
+        done <<< "$line"
+    else
+        final_line="$line"
+    fi
+    echo "$final_line"
+}
+
+_shmark_get_directory_from_list_index() {
+    # @param  integer List position
+    # @return string  Bookmarked directory path at given list position
+    [[ -s "$SHMARK_FILE" ]] || return
+    sed "$1"'q;d' <<< "$(_shmark_listdir)"
+}
+
+_shmark_get_list_index_from_directory() {
+    # @param  string  Bookmarked directory path
+    # @return integer List position of given bookmarked directory
+    _shmark_listdir | grep -n -m1 "^${1}$" | cut -d: -f1
+}
+
+_shmark_get_line_number() {
+    # @param  string|integer  Directory path or its list position
+    # @return integer         Line number in bookmarks file for given directory
+    local dir
+    if [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
+        dir="$(_shmark_get_directory_from_list_index $1)"
+    else
+        dir="${1/#$HOME/~}" # bookmarks file uses tildes for HOME
+    fi
+    fgrep -n -m1 "|${dir}|" "$SHMARK_FILE" | cut -d: -f1
+}
+
+_shmark_validate_num() {
+    local num="$1"
+    local msg="$2"
+    if [[ ! "$num" =~ ^[1-9][0-9]*$ ]]; then
+        echo >&2 "$msg"
+        echo >&2 ""
+        _shmark_list >&2
+        echo >&2 ""
+        _shmark_usage
+    fi
+}
+
+_shmark_update_last_visited() {
+    # @param  string A directory bookmark line (pipe-delimited, four fields)
+    # @return string Updated bookmark with current date for last field
+    local line="$1"
+    printf "%s|%s\n" "$(cut -d\| -f1-3 <<< "$line")" "$(date '+%F %T')"
+    # Bookmark format:  category|directory|date added|last visited
+}
+
+_shmark_update_category() {
+    # @param  string A directory bookmark line (pipe-delimited, four fields)
+    # @param  string New category
+    # @return string Updated bookmark with new category as first field
+    local line="$1"
+    local category="$2"
+    printf "%s|%s\n" "$category" "$(cut -d\| -f2-4 <<< "$line")"
+    # Bookmark format:  category|directory|date added|last visited
+}
+
+_shmark_replace_line() { # void
+    # Replaces line in bookmarks file
+    # @param integer Line number from bookmarks file
+    # @param string  The replacement text (a formatted directory bookmark)
+    local line_num="$1"
+    local line="$2"
+    cp -p ${SHMARK_FILE}{,.bak}
+    printf '%s\n' "${line_num}c" "$line" . w |
+    ed -s "$SHMARK_FILE" >/dev/null
 }
 
