@@ -342,7 +342,10 @@ shmark() {
             -f)
                 shift
                 local file
-                file="${1/#~/$HOME}" # expand tilde to home directory path
+                # Substitute home directory path for tilde:
+                file="${1/#~/$HOME}"
+                # Need an absolute path:
+                [[ ${file:0:1} != '/' ]] && file="${PWD}/${file}"
                 [[ -f "$file" ]] || touch "$file" || {
                     echo >&2 "Couldn't create a bookmarks file at '$file'"
                     kill -SIGINT $$
