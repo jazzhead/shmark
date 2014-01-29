@@ -817,6 +817,11 @@ __shmark_prepare_new_bookmark() {
 }
 
 __shmark_format_list_items() {
+    if [[ $# -ne 3 ]]; then
+        echo >&2 "Error: '$FUNCNAME()' requires three arguments."
+        echo >&2 "Usage: $FUNCNAME DIR_ONLY(bool) IDX(int) CATEGORY(str)"
+        return 1
+    fi
     local dir_only=$1
     local idx=$2
     local category="$3"
@@ -842,7 +847,12 @@ __shmark_format_list_items() {
 }
 
 __shmark_wrap_long_line() {
-    # Usage:  __shmark_wrap_long_line WIDTH DELIMITER INDENT LINE
+    if [[ $# -ne 4 ]]; then
+        echo >&2 "Error: '$FUNCNAME()' requires four arguments."
+        echo >&2 \
+            "Usage: $FUNCNAME WIDTH(int) DELIMITER(str) INDENT(str) LINE(str)"
+        return 1
+    fi
     local width="$1"      # maximum line width
     local delimiter="$2"  # delimiter for splitting line
     local indent="$3"     # indent for wrapped lines (literal characters)
@@ -876,6 +886,16 @@ __shmark_wrap_long_line() {
 __shmark_get_directory_from_list_index() {
     # @param  integer List position
     # @return string  Bookmarked directory path at given list position
+    if [[ $# -ne 1 ]]; then
+        echo >&2 "Error: '$FUNCNAME()' requires an integer argument."
+        echo >&2 "Usage: $FUNCNAME INTEGER"
+        return 1
+    fi
+    if [[ ! "$1" =~ ^[1-9][0-9]*$ ]]; then
+        echo >&2 "Error: '$FUNCNAME()' requires an integer argument."
+        echo >&2 "Usage: $FUNCNAME INTEGER"
+        return 1
+    fi
     [[ -s "$SHMARK_FILE" ]] || return
     sed "$1"'q;d' <<< "$(_shmark_listdir)"
 }
@@ -883,12 +903,22 @@ __shmark_get_directory_from_list_index() {
 __shmark_get_list_index_from_directory() {
     # @param  string  Bookmarked directory path
     # @return integer List position of given bookmarked directory
+    if [[ $# -ne 1 ]]; then
+        echo >&2 "Error: '$FUNCNAME()' requires an argument."
+        echo >&2 "Usage: $FUNCNAME DIRECTORY_PATH(str)"
+        return 1
+    fi
     _shmark_listdir | grep -n -m1 "^${1}$" | cut -d: -f1
 }
 
 __shmark_get_line_number() {
     # @param  string|integer  Directory path or its list position
     # @return integer         Line number in bookmarks file for given directory
+    if [[ $# -ne 1 ]]; then
+        echo >&2 "Error: '$FUNCNAME()' requires an argument."
+        echo >&2 "Usage: $FUNCNAME DIRECTORY_PATH|LIST_POSITION"
+        return 1
+    fi
     local dir
     if [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
         dir="$(__shmark_get_directory_from_list_index $1)"
@@ -899,6 +929,11 @@ __shmark_get_line_number() {
 }
 
 __shmark_validate_num() {
+    if [[ $# -ne 2 ]]; then
+        echo >&2 "Error: '$FUNCNAME()' requires two arguments."
+        echo >&2 "Usage: $FUNCNAME NUM(int) ERROR_MESSAGE(str)"
+        return 1
+    fi
     local num="$1"
     local msg="$2"
     if [[ ! "$num" =~ ^[1-9][0-9]*$ ]]; then
@@ -914,6 +949,11 @@ __shmark_validate_num() {
 __shmark_update_last_visited() {
     # @param  string A directory bookmark line (pipe-delimited, four fields)
     # @return string Updated bookmark with current date for last field
+    if [[ $# -ne 1 ]]; then
+        echo >&2 "Error: '$FUNCNAME()' requires an argument."
+        echo >&2 "Usage: $FUNCNAME BOOKMARK_LINE(str)"
+        return 1
+    fi
     local line="$1"
     printf "%s|%s\n" "$(cut -d\| -f1-3 <<< "$line")" "$(date '+%F %T')"
     # Bookmark format:  category|directory|date added|last visited
@@ -923,6 +963,11 @@ __shmark_update_category() {
     # @param  string A directory bookmark line (pipe-delimited, four fields)
     # @param  string New category
     # @return string Updated bookmark with new category as first field
+    if [[ $# -ne 2 ]]; then
+        echo >&2 "Error: '$FUNCNAME()' requires two arguments."
+        echo >&2 "Usage: $FUNCNAME BOOKMARK_LINE(str) CATEGORY(str)"
+        return 1
+    fi
     local line="$1"
     local category="$2"
     printf "%s|%s\n" "$category" "$(cut -d\| -f2-4 <<< "$line")"
@@ -933,6 +978,11 @@ __shmark_replace_line() { # void
     # Replaces line in bookmarks file
     # @param integer Line number from bookmarks file
     # @param string  The replacement text (a formatted directory bookmark)
+    if [[ $# -ne 2 ]]; then
+        echo >&2 "Error: '$FUNCNAME()' requires two arguments."
+        echo >&2 "Usage: $FUNCNAME LINE_NUM(int) BOOKMARK_LINE(str)"
+        return 1
+    fi
     local line_num="$1"
     local line="$2"
     cp -p ${SHMARK_FILE}{,.bak}
