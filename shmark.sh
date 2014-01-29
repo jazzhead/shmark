@@ -84,6 +84,9 @@ SHMARK_FILE="${SHMARK_FILE/#~/$HOME}"
 
 # == INFO FUNCTIONS ==
 
+# Help, usage, version. These functions are called by the main 'shmark'
+# function and aren't meant to be called directly.
+
 _shmark_oneline_usage() {
     echo "shmark [-hV] [-f bookmark_file] [-#] [action] [bookmark|category]"
 }
@@ -317,6 +320,8 @@ ___EndVersion___
 
 # == MAIN FUNCTION ==
 
+# This function is the primary interface that calls all the other functions.
+
 shmark() {
     #echo >&2 "DEBUG: ${FUNCNAME}(): running..."
 
@@ -476,6 +481,14 @@ shmark() {
 
 # == ACTIONS ==
 
+# These are the individual action functions called by the main 'shmark'
+# function. They can also be called individually so that short aliases can be
+# defined for individual functions. Example:  alias go='_shmark_cd'
+#
+# Separate Bash completions will need to be written/defined for any such
+# shortcuts to enable completion for any of the functions that take arguments.
+# A completions file is already available for the main 'shmark' function.
+
 _shmark_cd() {
     if [[ $# -eq 0 ]]; then
         echo >&2 "Error: The 'cd' action requires an argument."
@@ -487,7 +500,7 @@ _shmark_cd() {
 
     # Get bookmark directory path (for searching bookmarks file):
     if [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
-        dir="$(_shmark_get_directory_from_list_index $1)"
+        dir="$(__shmark_get_directory_from_list_index $1)"
     else
         dir="${1/#$HOME/~}" # HOME is replaced with tilde in bookmarks file
     fi
@@ -507,14 +520,14 @@ _shmark_cd() {
     echo >&2 "${PWD/#$HOME/~}"
 
     # Get line number for updating the bookmarks file:
-    line_num=$(_shmark_get_line_number "$dir")
+    line_num=$(__shmark_get_line_number "$dir")
     [[ -n "$line_num" ]] || return 0
 
     # Update the directory's 'last visited' field in the bookmarks file:
     bookmark=$(sed $line_num'q;d' "$SHMARK_FILE") || return 0
     if [ -n "$bookmark" ]; then
-        bookmark=$(_shmark_update_last_visited "$bookmark")
-        _shmark_replace_line $line_num "$bookmark"
+        bookmark=$(__shmark_update_last_visited "$bookmark")
+        __shmark_replace_line $line_num "$bookmark"
     fi
 
     return 0
@@ -583,7 +596,8 @@ _shmark_insert() {
     else
         # Make sure a list position argument from the command line is a
         # number and that the number is not zero:
-        _shmark_validate_num "$target_list_pos" "$default_errmsg" || return $?
+        __shmark_validate_num "$target_list_pos" "$default_errmsg" \
+            || return $?
         list_pos="$target_list_pos"
     fi
 
@@ -599,10 +613,10 @@ _shmark_insert() {
 
     # Find out the line number in the bookmarks file for the bookmark at
     # this list position.
-    line_num=$(_shmark_get_line_number "$list_pos")
+    line_num=$(__shmark_get_line_number "$list_pos")
 
     # Now check that the line number is a number and is not zero:
-    _shmark_validate_num "$line_num" "$default_errmsg" || return $?
+    __shmark_validate_num "$line_num" "$default_errmsg" || return $?
 
     # Need category of bookmark currently occupying target list position
     local category=$(awk -F\| 'NR=='$line_num' {print $1}' "$SHMARK_FILE")
@@ -619,11 +633,11 @@ _shmark_insert() {
 
     # If there is already an existing bookmark for the current directory,
     # find its line number before deleting it.
-    local cur_line_num=$(_shmark_get_line_number "$curdir")
+    local cur_line_num=$(__shmark_get_line_number "$curdir")
     if [ -n "$cur_line_num" ]; then
         # Find the list position of the old bookmark (so we can adjust the
         # target position if neccesary after deleting the old bookmark):
-        local cur_list_pos=$(_shmark_get_list_index_from_directory "$curdir")
+        local cur_list_pos=$(__shmark_get_list_index_from_directory "$curdir")
         # Delete the old bookmark:
         local delete_msg="Old bookmark deleted."
         local should_report_failure=0  # set to 1 for debugging
@@ -668,7 +682,7 @@ _shmark_delete() {
 
     local delete_msg="${delete_msg:-Bookmark deleted.}"
     local should_report_failure="${should_report_failure:-1}"
-    local line_num=$(_shmark_get_line_number "$1")
+    local line_num=$(__shmark_get_line_number "$1")
     if [[ "$line_num" =~ ^[1-9][0-9]*$ ]]; then
         cp -p ${SHMARK_FILE}{,.bak}
         if [[ $(wc -l < "$SHMARK_FILE") -eq 1 ]]; then
@@ -715,7 +729,7 @@ _shmark_list() {
         escaped_category=$(sed -E 's/[]\.*+?$|(){}[^-]/\\&/g' <<< "$category")
         n=$(grep -c "^$escaped_category" "$SHMARK_FILE")
         [[ $dir_only -eq 1 ]] || echo "$category"
-        _shmark_format_list_items $dir_only $i "$category"
+        __shmark_format_list_items $dir_only $i "$category"
         i=$((i + n))
     done <<< "$(_shmark_list_categories)"
 
@@ -723,7 +737,7 @@ _shmark_list() {
     if [[ $missing_category -eq 1 ]]; then
         category=""
         [[ $dir_only -eq 1 ]] || echo "MISCELLANEOUS"
-        _shmark_format_list_items $dir_only $i "$category"
+        __shmark_format_list_items $dir_only $i "$category"
     fi
 }
 
@@ -772,7 +786,7 @@ _shmark_chcat() {
     fi
 
     local category="$1"
-    local line_num=$(_shmark_get_line_number "$2")
+    local line_num=$(__shmark_get_line_number "$2")
     local errmsg=$( printf "%s\n" \
         "Error: The 'chcat' action requires two arguments: a category and" \
         "       either a bookmark directory path or a number chosen from" \
@@ -780,19 +794,23 @@ _shmark_chcat() {
         "Usage: shmark chcat CATEGORY BOOKMARK|NUMBER"
     )
 
-    _shmark_validate_num "$line_num" "$errmsg" || return $?
+    __shmark_validate_num "$line_num" "$errmsg" || return $?
 
     bookmark=$(sed $line_num'q;d' "$SHMARK_FILE")   # get existing bookmark
-    bookmark=$(_shmark_update_category "$bookmark" "$category") # update it
-    _shmark_replace_line $line_num "$bookmark"     # replace it in the file
+    bookmark=$(__shmark_update_category "$bookmark" "$category") # update it
+    __shmark_replace_line $line_num "$bookmark"     # replace it in the file
 
     return 0
 }
 
 
-# == UTILITY FUNCTIONS ==
+# == UTILITY FUNCTIONS (PRIVATE) ==
 
-_shmark_format_list_items() {
+# These functions are called by the other functions to perform various tasks
+# and aren't meant to be called directly. They can be thought of as private
+# functions and are identified with a double underscore (__) prefix.
+
+__shmark_format_list_items() {
     local dir_only=$1
     local idx=$2
     local category="$3"
@@ -812,13 +830,13 @@ _shmark_format_list_items() {
         formatted=$(nl -w $width -s ') ' -v $idx <<< "$result")
         # Wrap long lines:
         while IFS= read -r line; do
-            _shmark_wrap_long_line 80 '/' "      " "$line"
+            __shmark_wrap_long_line 80 '/' "      " "$line"
         done <<< "$formatted"
     fi
 }
 
-_shmark_wrap_long_line() {
-    # Usage:  _shmark_wrap_long_line WIDTH DELIMITER INDENT LINE
+__shmark_wrap_long_line() {
+    # Usage:  __shmark_wrap_long_line WIDTH DELIMITER INDENT LINE
     local width="$1"      # maximum line width
     local delimiter="$2"  # delimiter for splitting line
     local indent="$3"     # indent for wrapped lines (literal characters)
@@ -849,32 +867,32 @@ _shmark_wrap_long_line() {
     echo "$final_line"
 }
 
-_shmark_get_directory_from_list_index() {
+__shmark_get_directory_from_list_index() {
     # @param  integer List position
     # @return string  Bookmarked directory path at given list position
     [[ -s "$SHMARK_FILE" ]] || return
     sed "$1"'q;d' <<< "$(_shmark_listdir)"
 }
 
-_shmark_get_list_index_from_directory() {
+__shmark_get_list_index_from_directory() {
     # @param  string  Bookmarked directory path
     # @return integer List position of given bookmarked directory
     _shmark_listdir | grep -n -m1 "^${1}$" | cut -d: -f1
 }
 
-_shmark_get_line_number() {
+__shmark_get_line_number() {
     # @param  string|integer  Directory path or its list position
     # @return integer         Line number in bookmarks file for given directory
     local dir
     if [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
-        dir="$(_shmark_get_directory_from_list_index $1)"
+        dir="$(__shmark_get_directory_from_list_index $1)"
     else
         dir="${1/#$HOME/~}" # bookmarks file uses tildes for HOME
     fi
     fgrep -n -m1 "|${dir}|" "$SHMARK_FILE" | cut -d: -f1
 }
 
-_shmark_validate_num() {
+__shmark_validate_num() {
     local num="$1"
     local msg="$2"
     if [[ ! "$num" =~ ^[1-9][0-9]*$ ]]; then
@@ -887,7 +905,7 @@ _shmark_validate_num() {
     fi
 }
 
-_shmark_update_last_visited() {
+__shmark_update_last_visited() {
     # @param  string A directory bookmark line (pipe-delimited, four fields)
     # @return string Updated bookmark with current date for last field
     local line="$1"
@@ -895,7 +913,7 @@ _shmark_update_last_visited() {
     # Bookmark format:  category|directory|date added|last visited
 }
 
-_shmark_update_category() {
+__shmark_update_category() {
     # @param  string A directory bookmark line (pipe-delimited, four fields)
     # @param  string New category
     # @return string Updated bookmark with new category as first field
@@ -905,7 +923,7 @@ _shmark_update_category() {
     # Bookmark format:  category|directory|date added|last visited
 }
 
-_shmark_replace_line() { # void
+__shmark_replace_line() { # void
     # Replaces line in bookmarks file
     # @param integer Line number from bookmarks file
     # @param string  The replacement text (a formatted directory bookmark)
