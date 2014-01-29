@@ -398,17 +398,27 @@ shmark() {
 
         add|a)      # add bookmark for current directory to top of file
             shift
-            _shmark_add "${1:-}" # 'category' argument optional
+            _shmark_add "$@"
             ;;
 
         append|app) # append bookmark for current directory to bottom of file
             shift
-            _shmark_append "${1:-}" # 'category' argument optional
+            _shmark_append "$@"
             ;;
 
         insert|ins) # insert a bookmark at a specific list position
             shift
-            _shmark_insert "${1:-}" # will be prompted if arg omitted
+            _shmark_insert "$@" # will be prompted if arg omitted
+            ;;
+
+        del|rm)     # delete a bookmark
+            shift
+            _shmark_delete "$@"
+            ;;
+
+        chcat|cc)   # change the category of a bookmark
+            shift
+            _shmark_chcat "$@"
             ;;
 
         list|ls)    # show categorized bookmarks list
@@ -431,33 +441,12 @@ shmark() {
             _shmark_print
             ;;
 
-        del|rm)     # delete a bookmark
-            shift
-            if [[ $# -eq 0 ]]; then
-                echo >&2 "Error: The 'delete' action requires an argument."
-                _shmark_usage
-                return $?
-            fi
-            _shmark_delete "$1"
-            ;;
-
         undo)       # undo the last edit to the bookmarks file
             _shmark_undo
             ;;
 
         edit|ed)    # open bookmarks file in EDITOR
             _shmark_edit
-            ;;
-
-        chcat|cc)   # change the category of a bookmark
-            shift
-            if [[ $# -eq 2 ]]; then
-                _shmark_chcat "$@"
-            else
-                echo >&2 "Error: The 'chcat' action requires two arguments."
-                _shmark_usage
-            fi
-            return $?
             ;;
 
         help)       # show detailed help
@@ -532,7 +521,7 @@ _shmark_cd() {
 }
 
 _shmark_add() {
-    local category="$1" || return
+    local category="${1:-}"
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
     local curdate="$(date '+%F %T')"
 
@@ -549,7 +538,7 @@ _shmark_add() {
 }
 
 _shmark_append() {
-    local category="$1" || return
+    local category="${1:-}"
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
     local curdate="$(date '+%F %T')"
 
@@ -566,7 +555,7 @@ _shmark_append() {
 }
 
 _shmark_insert() {
-    local line_num list_pos msg
+    local target_list_pos="${1:-}"
     local ed_cmd=
     local line_total=$(echo $(wc -l < "$SHMARK_FILE"))
     local np=$((line_total + 1)) # 'np' = "next position" - need short var for:
@@ -575,9 +564,10 @@ _shmark_insert() {
         "       from the bookmarks list. To append as the last bookmark," \
         "       use ${np}; otherwise, use a number 1-${line_total}."
     )
+    local line_num list_pos msg
 
     # Get the target list postion:
-    if [[ -z "$1" ]]; then
+    if [[ -z "$target_list_pos" ]]; then
         # Handle a missing argument by prompting for a number:
         msg=$( printf "%s\n" \
             "" \
@@ -593,8 +583,8 @@ _shmark_insert() {
     else
         # Make sure a list position argument from the command line is a
         # number and that the number is not zero:
-        _shmark_validate_num "$1" "$default_errmsg"
-        list_pos="$1"
+        _shmark_validate_num "$target_list_pos" "$default_errmsg" || return $?
+        list_pos="$target_list_pos"
     fi
 
     # If the list position number is greater than the bookmark total, that
@@ -612,7 +602,7 @@ _shmark_insert() {
     line_num=$(_shmark_get_line_number "$list_pos")
 
     # Now check that the line number is a number and is not zero:
-    _shmark_validate_num "$line_num" "$default_errmsg"
+    _shmark_validate_num "$line_num" "$default_errmsg" || return $?
 
     # Need category of bookmark currently occupying target list position
     local category=$(awk -F\| 'NR=='$line_num' {print $1}' "$SHMARK_FILE")
@@ -669,6 +659,13 @@ _shmark_insert() {
 
 _shmark_delete() {
     # @param  string|integer  Directory path or its list position
+
+    if [[ $# -eq 0 ]]; then
+        echo >&2 "Error: The 'delete' action requires an argument."
+        _shmark_usage
+        return $?
+    fi
+
     local delete_msg="${delete_msg:-Bookmark deleted.}"
     local should_report_failure="${should_report_failure:-1}"
     local line_num=$(_shmark_get_line_number "$1")
@@ -768,6 +765,12 @@ _shmark_undo() {
 }
 
 _shmark_chcat() {
+    if [[ $# -ne 2 ]]; then
+        echo >&2 "Error: The 'chcat' action requires two arguments."
+        _shmark_usage
+        return $?
+    fi
+
     local category="$1"
     local line_num=$(_shmark_get_line_number "$2")
     local errmsg=$( printf "%s\n" \
@@ -777,7 +780,7 @@ _shmark_chcat() {
         "Usage: shmark chcat CATEGORY BOOKMARK|NUMBER"
     )
 
-    _shmark_validate_num "$line_num" "$errmsg"
+    _shmark_validate_num "$line_num" "$errmsg" || return $?
 
     bookmark=$(sed $line_num'q;d' "$SHMARK_FILE")   # get existing bookmark
     bookmark=$(_shmark_update_category "$bookmark" "$category") # update it
@@ -880,6 +883,7 @@ _shmark_validate_num() {
         _shmark_list >&2
         echo >&2 ""
         _shmark_usage
+        return $?
     fi
 }
 
