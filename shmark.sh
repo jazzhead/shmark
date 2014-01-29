@@ -534,35 +534,21 @@ _shmark_cd() {
 }
 
 _shmark_add() {
-    local category="${1:-}"
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
-    local curdate="$(date '+%F %T')"
 
-    # Delete old bookmark first if one exists. Also makes a backup of the
-    # bookmark file so don't make another backup in this function.
-    local delete_msg="Old bookmark deleted."
-    local should_report_failure=0
-    _shmark_delete "$curdir" || true  # continue regardless
+    local bookmark="$(__shmark_prepare_new_bookmark "$@")"
+    [[ -z "$bookmark" ]] && return 1
 
-    # Output line format:  category|directory|date added|last visited
-    local bookmark="$category|$curdir|$curdate|$curdate"
     printf '%s\n' 0a "$bookmark" . w | ed -s "$SHMARK_FILE"
     echo >&2 "Bookmark added for '$curdir'."
 }
 
 _shmark_append() {
-    local category="${1:-}"
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
-    local curdate="$(date '+%F %T')"
 
-    # Delete old bookmark first if one exists. Also makes a backup of the
-    # bookmark file so don't make another backup in this function.
-    local delete_msg="Old bookmark deleted."
-    local should_report_failure=0
-    _shmark_delete "$curdir" || true  # continue regardless
+    local bookmark="$(__shmark_prepare_new_bookmark "$@")"
+    [[ -z "$bookmark" ]] && return 1
 
-    # Output line format:  category|directory|date added|last visited
-    local bookmark="$category|$curdir|$curdate|$curdate"
     echo "$bookmark" >> "$SHMARK_FILE"
     echo >&2 "Bookmark appended for '$curdir'."
 }
@@ -809,6 +795,26 @@ _shmark_chcat() {
 # These functions are called by the other functions to perform various tasks
 # and aren't meant to be called directly. They can be thought of as private
 # functions and are identified with a double underscore (__) prefix.
+
+__shmark_prepare_new_bookmark() {
+    # @param  string Optional category
+    # @return string Formatted bookmark
+
+    local category="${1:-}"
+
+    # $curdir is inherited from calling function.
+    [[ -z "$curdir" ]] && return 1
+
+    # Delete old bookmark first if one exists. Also makes a backup of the
+    # bookmark file so don't make another backup in this function.
+    local delete_msg="Old bookmark deleted."
+    local should_report_failure=0
+    _shmark_delete "$curdir" || true  # continue regardless
+
+    # Output line format:  category|directory|date added|last visited
+    local curdate="$(date '+%F %T')"
+    echo "$category|$curdir|$curdate|$curdate"
+}
 
 __shmark_format_list_items() {
     local dir_only=$1
