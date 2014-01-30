@@ -290,10 +290,18 @@ _shmark_actions_help() {
         and are prefixed by their list index number. (Note that the list
         index number is not the same as the line number in the actual
         file. The index number is assigned after the directories have
-        been sorted by category.)
+        been sorted by category.) Uncategorized bookmarks are not
+        included in the list. Use 'listall' to see a list of all
+        bookmarks including those that are uncategorized.
+
+    listall|lsa
+        Like 'list', but include uncategorized bookmarks. Uncategorized
+        bookmarks are listed after all other categories using a default
+        category, which is "MISCELLANEOUS" unless customized by setting
+        and exporting a SHMARK_DEFAULT_CATEGORY environment variable.
 
     listcat|lsc
-        Show list of bookmark categories used in bookmarks file.
+        Show a list of bookmark categories used in bookmarks file.
 
     listdir|lsd
         Show just the bookmarked directories without the categories or
@@ -436,6 +444,7 @@ shmark() {
         del|rm          ) shift; _shmark_delete "$@" ;;
         chcat|cc        ) shift; _shmark_chcat  "$@" ;;
         list|ls         ) _shmark_list               ;;
+        listall|lsa     ) _shmark_listall            ;;
         listcat|lsc     ) _shmark_list_categories    ;;
         listdir|lsd     ) _shmark_listdir            ;;
         listunsort|lsus ) _shmark_listunsort         ;;
@@ -755,6 +764,7 @@ _shmark_edit() {
 _shmark_list() {
     __shmark_check_file_var || return 1
 
+    local listall=${listall:-0}
     local dir_only=${dir_only:-0}
     local i=1
     local n category result escaped_category
@@ -778,9 +788,11 @@ _shmark_list() {
 
     # Now add any uncategorized bookmarks using a default category
     if [[ $missing_category -eq 1 ]]; then
-        category=""
-        [[ $dir_only -eq 1 ]] || echo "$SHMARK_DEFAULT_CATEGORY"
-        __shmark_format_list_items $dir_only $i "$category"
+        if [[ $listall -eq 1 || $dir_only -eq 1 ]]; then
+            category=""
+            [[ $dir_only -eq 1 ]] || echo "$SHMARK_DEFAULT_CATEGORY"
+            __shmark_format_list_items $dir_only $i "$category"
+        fi
     fi
 }
 
@@ -794,6 +806,11 @@ _shmark_list_categories() {
     else
         grep -v '^$' <<< "$categories"
     fi
+}
+
+_shmark_listall() {
+    local listall=1
+    _shmark_list
 }
 
 _shmark_listdir() {
