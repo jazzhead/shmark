@@ -182,19 +182,18 @@ BOOKMARKS FILE
     used on a directory.
 
 ENVIRONMENT VARIABLES
-    Some environment variables can be set that will affect the operation of
-    shmark. Export any of the available variables from .bash_profile,
-    .bashrc or another startup file. For these environment variables to take
-    effect, make sure the shmark.sh file is sourced after any of the
-    variables have been exported. Available environment variables:
+    Some environment variables can be set that will affect the operation
+    of shmark. Export any of the available variables from .bash_profile,
+    .bashrc or another startup file. For these environment variables to
+    take effect, make sure the shmark.sh file is sourced after any of
+    the variables have been exported. Available environment variables:
 
         SHMARK_FILE=FILE                   same as option -f FILE
         SHMARK_DEFAULT_ACTION=""           run this when called with no args
         SHMARK_DEFAULT_CATEGORY="MISC..."  use for uncategorized bookmarks
 
-    Current environment:
-
-$(__shmark_variables)
+    To see the current values for shmark environment variables, run
+    'shmark env'
 ___EndHelp___
     return 0
 }
@@ -265,6 +264,10 @@ _shmark_actions_help() {
 
     edit|ed
         Open the bookmarks file in the default EDITOR.
+
+    env
+        Show the values for any shmark environment variables that have
+        been set.
 
     help
         Display detailed help.
@@ -438,6 +441,7 @@ shmark() {
         listunsort|lsus ) _shmark_listunsort         ;;
         print           ) _shmark_print              ;;
         undo            ) _shmark_undo               ;;
+        env             ) _shmark_env                ;;
         edit|ed         ) _shmark_edit               ;;
         shorthelp       ) _shmark_shorthelp          ;;
         help)
@@ -825,6 +829,15 @@ _shmark_undo() {
     fi
 }
 
+_shmark_env() {
+    local v
+    printf "%s\n" "Current shmark environment variables:" ""
+    for v in $(echo ${!SHMARK_@}); do
+        printf "    %-25s = %s\n" $v "${!v/#$HOME/~}"
+    done
+    return 0
+}
+
 
 # ==== UTILITY FUNCTIONS (PRIVATE) ===========================================
 
@@ -1054,14 +1067,6 @@ __shmark_replace_line() { # void
     cp -p ${SHMARK_FILE}{,.bak}
     printf '%s\n' "${line_num}c" "$line" . w |
     ed -s "$SHMARK_FILE" >/dev/null
-}
-
-__shmark_variables() {
-    local v
-    for v in $(echo ${!SHMARK_@}); do
-        printf "        %-25s = %s\n" $v "${!v/#$HOME/~}"
-    done
-    return 0
 }
 
 ##
