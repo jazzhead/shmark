@@ -1069,7 +1069,8 @@ __shmark_variables() {
 #
 # @return   Exit status: 0=true, >0=false
 __shmark_check_file_var() {
-    if [[ -z "$SHMARK_FILE" ]]; then
+    #unset SHMARK_FILE  # DEBUG 'set -o nounset (set -u)'
+    if [[ -z "${SHMARK_FILE:+1}" ]]; then
         cat <<-__EOF__ >&2
 			Error: The SHMARK_FILE environment variable is not set. It
 			  probably got unset at some point. If you exported a custom
