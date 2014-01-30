@@ -33,8 +33,9 @@
 #
 ##############################################################################
 #
-# @date    2014-01-26 Last modified
+# @date    2014-01-29 Last modified
 # @date    2014-01-18 First version
+# @version @@VERSION@@
 # @author  Steve Wheeler
 #
 ##############################################################################
@@ -73,10 +74,13 @@ SHMARK_FILE="${SHMARK_FILE/#~/$HOME}"
     || { echo >&2 "Couldn't create a bookmarks file at '$SHMARK_FILE'"
          kill -SIGINT $$ ; }
 
-# Check if a default action has been defined. (The default action is used if
-# 'shmark' is run without any action.) This environment variable can be set
-# in .bash_profile or .bashrc. Make sure it is set before this functions file
-# is sourced.
+#
+# Check if any default environment variables have been defined. These
+# environment variables can be set in .bash_profile or .bashrc. Make sure
+# they are set before this functions file is sourced. If you change any of
+# them after sourcing this file, then source the file again.
+#
+# The default action is used if shmark() is run without any action.
 : ${SHMARK_DEFAULT_ACTION:=}
 
 #echo "DEBUG: $SHMARK_FILE  (exiting early...)"; return 1
@@ -84,7 +88,7 @@ SHMARK_FILE="${SHMARK_FILE/#~/$HOME}"
 
 # == INFO FUNCTIONS ==
 
-# Help, usage, version. These functions are called by the main 'shmark'
+# Help, usage, version. These functions are called by the main shmark()
 # function and aren't meant to be called directly.
 
 _shmark_oneline_usage() {
@@ -135,9 +139,6 @@ INSTALLATION
     shell environment rather than run directly. See the included INSTALL
     file for full installation instructions.
 
-ACTIONS
-$(_shmark_actions_help)
-
 OPTIONS
     -#
         Shortcut to go (cd) to a directory bookmark by its list position
@@ -154,6 +155,9 @@ OPTIONS
 
     -V|--version
         Print version information.
+
+ACTIONS
+$(_shmark_actions_help)
 
 BOOKMARKS FILE
     The bookmarks file is a plaintext file with each line representing a
@@ -320,8 +324,13 @@ ___EndVersion___
 
 # == MAIN FUNCTION ==
 
+##
 # This function is the primary interface that calls all the other functions.
-
+#
+# @param $1 (string)  Option or command (action)
+# @param $2 (str|int) Category, bookmark or list position depending on command
+# @param $3 (str|int) The 'chcat' command takes a bookmark or list position arg
+# @return   Exit status: 0=true, >0=false
 shmark() {
     #echo >&2 "DEBUG: ${FUNCNAME}(): running..."
 
@@ -481,14 +490,21 @@ shmark() {
 
 # == ACTIONS ==
 
-# These are the individual action functions called by the main 'shmark'
+# These are the individual action functions called by the main shmark()
 # function. They can also be called individually so that short aliases can be
 # defined for individual functions. Example:  alias go='_shmark_cd'
 #
 # Separate Bash completions will need to be written/defined for any such
 # shortcuts to enable completion for any of the functions that take arguments.
-# A completions file is already available for the main 'shmark' function.
+# A completions file is already available for the main shmark() function.
+# Additionally, an extra completions file is available with an example
+# completion for the _shmark_cd() function.
 
+##
+# Go (cd) to a bookmarked directory.
+#
+# @param  (str|int) Bookmarked directory or list position
+# @return Exit status: 0=true, >0=false
 _shmark_cd() {
     if [[ $# -eq 0 ]]; then
         echo >&2 "Error: The 'cd' action requires an argument."
@@ -533,6 +549,11 @@ _shmark_cd() {
     return 0
 }
 
+##
+# Add a directory bookmark to the top of a category.
+#
+# @param  (string) Optional category for bookmark
+# @return Exit status: 0=true, >0=false
 _shmark_add() {
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
 
@@ -543,6 +564,11 @@ _shmark_add() {
     echo >&2 "Bookmark added for '$curdir'."
 }
 
+##
+# Append a directory bookmark to the bottom of a category.
+#
+# @param  (string) Optional category for bookmark
+# @return Exit status: 0=true, >0=false
 _shmark_append() {
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
 
@@ -553,6 +579,11 @@ _shmark_append() {
     echo >&2 "Bookmark appended for '$curdir'."
 }
 
+##
+# Insert a directory bookmark at a specific list position.
+#
+# @param  (integer) List position for insertion
+# @return Exit status: 0=true, >0=false
 _shmark_insert() {
     local target_list_pos="${1:-}"
     local ed_cmd=
@@ -657,9 +688,12 @@ _shmark_insert() {
     echo >&2 "Bookmark for '$curdir' inserted into bookmarks file."
 }
 
+##
+# Delete a bookmark.
+#
+# @param (str|int) Bookmarked directory path or its list position
+# @return Exit status: 0=true, >0=false
 _shmark_delete() {
-    # @param  string|integer  Directory path or its list position
-
     if [[ $# -eq 0 ]]; then
         echo >&2 "Error: The 'delete' action requires an argument."
         _shmark_usage
@@ -689,6 +723,37 @@ _shmark_delete() {
         fi
         return 1
     fi
+}
+
+##
+# Change the category of a bookmark.
+#
+# @param $1 (string)  Category to use
+# @param $2 (str|int) Bookmarked directory path or its list position
+# @return   Exit status: 0=true, >0=false
+_shmark_chcat() {
+    if [[ $# -ne 2 ]]; then
+        echo >&2 "Error: The 'chcat' action requires two arguments."
+        _shmark_usage
+        return $?
+    fi
+
+    local category="$1"
+    local line_num=$(__shmark_get_line_number "$2")
+    local errmsg=$( printf "%s\n" \
+        "Error: The 'chcat' action requires two arguments: a category and" \
+        "       either a bookmark directory path or a number chosen from" \
+        "       the bookmarks list." \
+        "Usage: shmark chcat CATEGORY BOOKMARK|NUMBER"
+    )
+
+    __shmark_validate_num "$line_num" "$errmsg" || return $?
+
+    bookmark=$(sed $line_num'q;d' "$SHMARK_FILE")   # get existing bookmark
+    bookmark=$(__shmark_update_category "$bookmark" "$category") # update it
+    __shmark_replace_line $line_num "$bookmark"     # replace it in the file
+
+    return 0
 }
 
 _shmark_edit() {
@@ -764,42 +829,16 @@ _shmark_undo() {
     fi
 }
 
-_shmark_chcat() {
-    if [[ $# -ne 2 ]]; then
-        echo >&2 "Error: The 'chcat' action requires two arguments."
-        _shmark_usage
-        return $?
-    fi
-
-    local category="$1"
-    local line_num=$(__shmark_get_line_number "$2")
-    local errmsg=$( printf "%s\n" \
-        "Error: The 'chcat' action requires two arguments: a category and" \
-        "       either a bookmark directory path or a number chosen from" \
-        "       the bookmarks list." \
-        "Usage: shmark chcat CATEGORY BOOKMARK|NUMBER"
-    )
-
-    __shmark_validate_num "$line_num" "$errmsg" || return $?
-
-    bookmark=$(sed $line_num'q;d' "$SHMARK_FILE")   # get existing bookmark
-    bookmark=$(__shmark_update_category "$bookmark" "$category") # update it
-    __shmark_replace_line $line_num "$bookmark"     # replace it in the file
-
-    return 0
-}
-
-
 # == UTILITY FUNCTIONS (PRIVATE) ==
 
 # These functions are called by the other functions to perform various tasks
 # and aren't meant to be called directly. They can be thought of as private
 # functions and are identified with a double underscore (__) prefix.
 
+##
+# @param  (string) Optional category
+# @return (string) Formatted bookmark
 __shmark_prepare_new_bookmark() {
-    # @param  string Optional category
-    # @return string Formatted bookmark
-
     local category="${1:-}"
 
     # $curdir is inherited from calling function.
@@ -816,10 +855,15 @@ __shmark_prepare_new_bookmark() {
     echo "$category|$curdir|$curdate|$curdate"
 }
 
+##
+# @param $1 (integer) Bool 1=true, 0=false. Should only directories be returned?
+# @param $2 (integer) Starting list postition number
+# @param $3 (string)  Bookmark category
+# @return   (string)  Formatted list items
 __shmark_format_list_items() {
     if [[ $# -ne 3 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires three arguments."
-        echo >&2 "Usage: $FUNCNAME DIR_ONLY(bool) IDX(int) CATEGORY(str)"
+        echo >&2 "Usage: $FUNCNAME DIR_ONLY(int) IDX(int) CATEGORY(str)"
         return 1
     fi
     local dir_only=$1
@@ -846,6 +890,12 @@ __shmark_format_list_items() {
     fi
 }
 
+##
+# @param $1 (integer) Maximum line width
+# @param $2 (string)  Delimiter for splitting line
+# @param $3 (string)  Indent for wrapped lines (literal characters)
+# @param $4 (string)  The line to wrap
+# @return   (string)  Wrapped line
 __shmark_wrap_long_line() {
     if [[ $# -ne 4 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires four arguments."
@@ -883,9 +933,10 @@ __shmark_wrap_long_line() {
     echo "$final_line"
 }
 
+##
+# @param  (integer) List position
+# @return (string)  Bookmarked directory path at given list position
 __shmark_get_directory_from_list_index() {
-    # @param  integer List position
-    # @return string  Bookmarked directory path at given list position
     if [[ $# -ne 1 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires an integer argument."
         echo >&2 "Usage: $FUNCNAME INTEGER"
@@ -900,9 +951,10 @@ __shmark_get_directory_from_list_index() {
     sed "$1"'q;d' <<< "$(_shmark_listdir)"
 }
 
+##
+# @param  (string) Bookmarked directory path
+# @return (integer) List position of given bookmarked directory
 __shmark_get_list_index_from_directory() {
-    # @param  string  Bookmarked directory path
-    # @return integer List position of given bookmarked directory
     if [[ $# -ne 1 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires an argument."
         echo >&2 "Usage: $FUNCNAME DIRECTORY_PATH(str)"
@@ -911,9 +963,10 @@ __shmark_get_list_index_from_directory() {
     _shmark_listdir | grep -n -m1 "^${1}$" | cut -d: -f1
 }
 
+##
+# @param  (str|int) Directory path or its list position
+# @return (integer) Line number in bookmarks file for given directory
 __shmark_get_line_number() {
-    # @param  string|integer  Directory path or its list position
-    # @return integer         Line number in bookmarks file for given directory
     if [[ $# -ne 1 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires an argument."
         echo >&2 "Usage: $FUNCNAME DIRECTORY_PATH|LIST_POSITION"
@@ -928,6 +981,10 @@ __shmark_get_line_number() {
     fgrep -n -m1 "|${dir}|" "$SHMARK_FILE" | cut -d: -f1
 }
 
+##
+# @param $1 (integer) Number to validate
+# @param $2 (string)  Error message
+# @return   Exit status: 0=true, >0=false
 __shmark_validate_num() {
     if [[ $# -ne 2 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires two arguments."
@@ -946,9 +1003,10 @@ __shmark_validate_num() {
     fi
 }
 
+##
+# @param  (string) A directory bookmark line (pipe-delimited, four fields)
+# @return (string) Updated bookmark with current date for last field
 __shmark_update_last_visited() {
-    # @param  string A directory bookmark line (pipe-delimited, four fields)
-    # @return string Updated bookmark with current date for last field
     if [[ $# -ne 1 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires an argument."
         echo >&2 "Usage: $FUNCNAME BOOKMARK_LINE(str)"
@@ -959,10 +1017,11 @@ __shmark_update_last_visited() {
     # Bookmark format:  category|directory|date added|last visited
 }
 
+##
+# @param $1 (string) A directory bookmark line (pipe-delimited, four fields)
+# @param $2 (string) New category
+# @return   (string) Updated bookmark with new category as first field
 __shmark_update_category() {
-    # @param  string A directory bookmark line (pipe-delimited, four fields)
-    # @param  string New category
-    # @return string Updated bookmark with new category as first field
     if [[ $# -ne 2 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires two arguments."
         echo >&2 "Usage: $FUNCNAME BOOKMARK_LINE(str) CATEGORY(str)"
@@ -974,10 +1033,12 @@ __shmark_update_category() {
     # Bookmark format:  category|directory|date added|last visited
 }
 
+##
+# Replaces line in bookmarks file
+#
+# @param $1 (integer) Line number from bookmarks file
+# @param $2 (string)  The replacement text (a formatted directory bookmark)
 __shmark_replace_line() { # void
-    # Replaces line in bookmarks file
-    # @param integer Line number from bookmarks file
-    # @param string  The replacement text (a formatted directory bookmark)
     if [[ $# -ne 2 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires two arguments."
         echo >&2 "Usage: $FUNCNAME LINE_NUM(int) BOOKMARK_LINE(str)"
