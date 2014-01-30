@@ -82,6 +82,12 @@ SHMARK_FILE="${SHMARK_FILE/#~/$HOME}"
 #
 # The default action is used if shmark() is run without any action.
 : ${SHMARK_DEFAULT_ACTION:=}
+#
+# The default category is used for any bookmarks that don't have a category.
+# Note that this value is never written to the bookmarks file. If you change
+# the value of this environment variable, that value will be used whenever
+# uncategorized bookmarks are listed.
+: ${SHMARK_DEFAULT_CATEGORY:=MISCELLANEOUS}
 
 #echo "DEBUG: $SHMARK_FILE  (exiting early...)"; return 1
 
@@ -174,6 +180,21 @@ BOOKMARKS FILE
     action is used to change to a bookmarked directory. Both date fields
     are updated whenever the 'add', 'append' or 'insert' actions are
     used on a directory.
+
+ENVIRONMENT VARIABLES
+    Some environment variables can be set that will affect the operation of
+    shmark. Export any of the available variables from .bash_profile,
+    .bashrc or another startup file. For these environment variables to take
+    effect, make sure the shmark.sh file is sourced after any of the
+    variables have been exported. Available environment variables:
+
+        SHMARK_FILE=FILE                   same as option -f FILE
+        SHMARK_DEFAULT_ACTION=""           run this when called with no args
+        SHMARK_DEFAULT_CATEGORY="MISC..."  use for uncategorized bookmarks
+
+    Current environment:
+
+$(__shmark_variables)
 ___EndHelp___
     return 0
 }
@@ -787,7 +808,7 @@ _shmark_list() {
     # Now add any uncategorized bookmarks using a default category
     if [[ $missing_category -eq 1 ]]; then
         category=""
-        [[ $dir_only -eq 1 ]] || echo "MISCELLANEOUS"
+        [[ $dir_only -eq 1 ]] || echo "$SHMARK_DEFAULT_CATEGORY"
         __shmark_format_list_items $dir_only $i "$category"
     fi
 }
@@ -1049,5 +1070,13 @@ __shmark_replace_line() { # void
     cp -p ${SHMARK_FILE}{,.bak}
     printf '%s\n' "${line_num}c" "$line" . w |
     ed -s "$SHMARK_FILE" >/dev/null
+}
+
+__shmark_variables() {
+    local v
+    for v in $(echo ${!SHMARK_@}); do
+        printf "        %-25s = %s\n" $v "${!v/#$HOME/~}"
+    done
+    return 0
 }
 
