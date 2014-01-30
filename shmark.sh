@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2014-01-29 Last modified
+# @date    2014-01-30 Last modified
 # @date    2014-01-18 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -45,7 +45,7 @@
 SHMARK_VERSION="@@VERSION@@"
 
 
-## == SETUP ==
+## ==== SETUP ================================================================
 
 # Assign a null value if the bookmark file variable is undefined:
 : ${SHMARK_FILE:=}
@@ -92,7 +92,7 @@ SHMARK_FILE="${SHMARK_FILE/#~/$HOME}"
 #echo "DEBUG: $SHMARK_FILE  (exiting early...)"; return 1
 
 
-# == INFO FUNCTIONS ==
+# ==== INFO FUNCTIONS ========================================================
 
 # Help, usage, version. These functions are called by the main shmark()
 # function and aren't meant to be called directly.
@@ -343,7 +343,7 @@ ___EndVersion___
 }
 
 
-# == MAIN FUNCTION ==
+# ==== MAIN FUNCTION =========================================================
 
 ##
 # This function is the primary interface that calls all the other functions.
@@ -426,65 +426,21 @@ shmark() {
 
     # Process actions
     case "$action" in
-        cd|go)      # go (cd) to bookmarked directory
-            shift
-            _shmark_cd "$@"
-            ;;
-
-        add|a)      # add bookmark for current directory to top of file
-            shift
-            _shmark_add "$@"
-            ;;
-
-        append|app) # append bookmark for current directory to bottom of file
-            shift
-            _shmark_append "$@"
-            ;;
-
-        insert|ins) # insert a bookmark at a specific list position
-            shift
-            _shmark_insert "$@" # will be prompted if arg omitted
-            ;;
-
-        del|rm)     # delete a bookmark
-            shift
-            _shmark_delete "$@"
-            ;;
-
-        chcat|cc)   # change the category of a bookmark
-            shift
-            _shmark_chcat "$@"
-            ;;
-
-        list|ls)    # show categorized bookmarks list
-            _shmark_list
-            ;;
-
-        listcat|lsc) # show list of bookmark categories used
-            _shmark_list_categories
-            ;;
-
-        listdir|lsd) # show bookmarked directories only w/o categories, line #s
-            _shmark_listdir
-            ;;
-
-        listunsort|lsus) # show unsorted bookmarked directories only
-            _shmark_listunsort
-            ;;
-
-        print)      # show raw bookmark file (w/line numbers)
-            _shmark_print
-            ;;
-
-        undo)       # undo the last edit to the bookmarks file
-            _shmark_undo
-            ;;
-
-        edit|ed)    # open bookmarks file in EDITOR
-            _shmark_edit
-            ;;
-
-        help)       # show detailed help
+        cd|go           ) shift; _shmark_cd     "$@" ;;
+        add|a           ) shift; _shmark_add    "$@" ;;
+        append|app      ) shift; _shmark_append "$@" ;;
+        insert|ins      ) shift; _shmark_insert "$@" ;;
+        del|rm          ) shift; _shmark_delete "$@" ;;
+        chcat|cc        ) shift; _shmark_chcat  "$@" ;;
+        list|ls         ) _shmark_list               ;;
+        listcat|lsc     ) _shmark_list_categories    ;;
+        listdir|lsd     ) _shmark_listdir            ;;
+        listunsort|lsus ) _shmark_listunsort         ;;
+        print           ) _shmark_print              ;;
+        undo            ) _shmark_undo               ;;
+        edit|ed         ) _shmark_edit               ;;
+        shorthelp       ) _shmark_shorthelp          ;;
+        help)
             # If STDOUT is to a terminal (TTY), then try to pipe
             # the output to the PAGER (less by default):
             if [ -t 1 ]; then
@@ -495,11 +451,6 @@ shmark() {
             # Fallback to STDOUT for redirection or pipes:
             _shmark_help
             ;;
-
-        shorthelp)  # show short help
-            _shmark_shorthelp
-            ;;
-
         *)
             echo >&2 "Error: Unknown action: $action"
             _shmark_usage
@@ -509,7 +460,7 @@ shmark() {
 }
 
 
-# == ACTIONS ==
+# ==== ACTIONS ===============================================================
 
 # These are the individual action functions called by the main shmark()
 # function. They can also be called individually so that short aliases can be
@@ -874,7 +825,8 @@ _shmark_undo() {
     fi
 }
 
-# == UTILITY FUNCTIONS (PRIVATE) ==
+
+# ==== UTILITY FUNCTIONS (PRIVATE) ===========================================
 
 # These functions are called by the other functions to perform various tasks
 # and aren't meant to be called directly. They can be thought of as private
