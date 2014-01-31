@@ -833,9 +833,8 @@ _shmark_listunsort() {
 _shmark_print() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
 
-    #awk -F\| '{ printf "%-10s%-50s%-20s%s\n",$1,$2,$3,$4}' "$SHMARK_FILE"
-    #cat "$SHMARK_FILE"
-    local width=$( echo $( printf $( wc -l < "$SHMARK_FILE" ) | wc -c ) )
+    local width=$( echo $( wc -l < "$SHMARK_FILE" ) )
+    width=${#width}
     nl -w $width -s ') ' "$SHMARK_FILE"
 }
 
@@ -913,7 +912,8 @@ __shmark_format_list_items() {
         echo "$result"
     else
         # Get the number of digits in the last line number:
-        width=$( echo $(printf $(wc -l < "$SHMARK_FILE") | wc -c) )
+        width=$( echo $( wc -l < "$SHMARK_FILE" ) )
+        width=${#width}
         # Indent list items two spaces:
         width=$(( width + 2 ))
         # Number the list items:
