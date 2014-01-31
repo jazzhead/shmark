@@ -220,7 +220,8 @@ _shmark_actions_help() {
         its category. To add a bookmark as the very last in its
         category, use the 'append' command. To insert a bookmark at a
         specific list position, use the 'insert' command. All bookmarks
-        are grouped by category in the output of the 'list' command.
+        are grouped by category in the output of the 'list' and
+        'listall' commands.
 
     append|app [CATEGORY]
         Similar to the 'add' command except that the bookmark is added
@@ -228,7 +229,7 @@ _shmark_actions_help() {
         bookmark that is "appended" will be listed as the last in its
         category. A bookmark that is "added" will be listed as the first
         in its category. All bookmarks are grouped by category in the
-        output if the 'list' command.
+        output of the 'list' and 'listall' commands.
 
     cd|go BOOKMARK
     cd|go NUMBER
@@ -236,7 +237,7 @@ _shmark_actions_help() {
         directory can be specified by its full path (available with tab
         completion from a partially typed path) or by specifying the
         bookmark's list position NUMBER. The list position can be found
-        using the 'list' action.
+        using the 'list' or 'listall' actions.
 
         A shortcut to go to a bookmark by its list position is to just
         prefix the list position NUMBER with a hyphen without using the
@@ -250,7 +251,7 @@ _shmark_actions_help() {
         directory can be specified by its full path (available with tab
         completion from a partially typed path) or by specifying the
         bookmark's list position NUMBER. The list position can be found
-        using the 'list' action.
+        using the 'list' or 'listall' actions.
 
         Tab completion can also be used for the CATEGORY.
 
@@ -260,7 +261,7 @@ _shmark_actions_help() {
         The bookmarked directory can be specified by its full path
         (available with tab completion from a partially typed path) or
         by specifying the bookmark's list position NUMBER. The list
-        position can be found using the 'list' action.
+        position can be found using the 'list' or 'listall' actions.
 
     edit|ed
         Open the bookmarks file in the default EDITOR.
@@ -274,10 +275,10 @@ _shmark_actions_help() {
 
     insert|ins LIST_POSITION
         Insert a bookmark for the current directory at a specific list
-        position. List positions can be found in the output of the
-        'list' action. The bookmark currently occupying the target list
-        position as well as any bookmarks following it will all be
-        pushed down one position.
+        position (number). List positions can be found in the output of
+        the 'list' or 'listall' actions. The bookmark currently
+        occupying the target list position as well as any bookmarks
+        following it will all be pushed down one position.
 
         A bookmark can be appended to the end of the list by giving a
         list position that is greater than the last position, but the
@@ -1057,7 +1058,7 @@ __shmark_validate_num() {
     if [[ ! "$num" =~ ^[1-9][0-9]*$ ]]; then
         echo >&2 "$msg"
         echo >&2 ""
-        _shmark_list >&2
+        _shmark_listall >&2
         echo >&2 ""
         _shmark_usage
         return $?
