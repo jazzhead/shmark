@@ -45,7 +45,7 @@
 SHMARK_VERSION="@@VERSION@@"
 
 
-## ==== SETUP ================================================================
+# ==== SETUP =================================================================
 
 # Assign a null value if the bookmark file variable is undefined:
 : ${SHMARK_FILE:=}
@@ -494,7 +494,7 @@ shmark() {
 # @param  (str|int) Bookmarked directory or list position
 # @return Exit status: 0=true, >0=false
 _shmark_cd() {
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     if [[ $# -eq 0 ]]; then
         echo >&2 "Error: The 'cd' action requires an argument."
@@ -545,7 +545,7 @@ _shmark_cd() {
 # @param  (string) Optional category for bookmark
 # @return Exit status: 0=true, >0=false
 _shmark_add() {
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
 
@@ -562,7 +562,7 @@ _shmark_add() {
 # @param  (string) Optional category for bookmark
 # @return Exit status: 0=true, >0=false
 _shmark_append() {
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
 
@@ -579,7 +579,7 @@ _shmark_append() {
 # @param  (integer) List position for insertion
 # @return Exit status: 0=true, >0=false
 _shmark_insert() {
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     local target_list_pos="${1:-}"
     local ed_cmd=
@@ -690,7 +690,7 @@ _shmark_insert() {
 # @param (str|int) Bookmarked directory path or its list position
 # @return Exit status: 0=true, >0=false
 _shmark_delete() {
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     if [[ $# -eq 0 ]]; then
         echo >&2 "Error: The 'delete' action requires an argument."
@@ -730,7 +730,7 @@ _shmark_delete() {
 # @param $2 (str|int) Bookmarked directory path or its list position
 # @return   Exit status: 0=true, >0=false
 _shmark_chcat() {
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     if [[ $# -ne 2 ]]; then
         echo >&2 "Error: The 'chcat' action requires two arguments."
@@ -757,7 +757,7 @@ _shmark_chcat() {
 }
 
 _shmark_edit() {
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     local editor=${EDITOR-vi}
     echo >&2 "Editing bookmarks file (${SHMARK_FILE/#$HOME/~})..."
@@ -765,8 +765,10 @@ _shmark_edit() {
 }
 
 _shmark_list() {
-    __shmark_check_file_var || return 1
-    __shmark_check_category_var || return 1
+    #unset SHMARK_FILE              # DEBUG 'set -o nounset (set -u)'
+    #unset SHMARK_DEFAULT_CATEGORY  # DEBUG 'set -o nounset (set -u)'
+    __shmark_check_envvar 'SHMARK_FILE'             || return 1
+    __shmark_check_envvar 'SHMARK_DEFAULT_CATEGORY' || return 1
 
     local listall=${listall:-0}
     local dir_only=${dir_only:-0}
@@ -801,7 +803,7 @@ _shmark_list() {
 }
 
 _shmark_list_categories() {
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     local include_blank_categories=${include_blank_categories=-0}
     local categories=$(cut -d\| -f1 "$SHMARK_FILE" | sort -u)
@@ -823,13 +825,13 @@ _shmark_listdir() {
 }
 
 _shmark_listunsort() {
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     cut -d\| -f2 "$SHMARK_FILE"
 }
 
 _shmark_print() {
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     #awk -F\| '{ printf "%-10s%-50s%-20s%s\n",$1,$2,$3,$4}' "$SHMARK_FILE"
     #cat "$SHMARK_FILE"
@@ -838,7 +840,7 @@ _shmark_print() {
 }
 
 _shmark_undo() {
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     if [[ -f "${SHMARK_FILE}.bak" ]]; then
         echo >&2 "Undoing last edit to the bookmarks file..."
@@ -892,7 +894,7 @@ __shmark_prepare_new_bookmark() {
 # @param $3 (string)  Bookmark category
 # @return   (string)  Formatted list items
 __shmark_format_list_items() {
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     if [[ $# -ne 3 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires three arguments."
@@ -970,7 +972,7 @@ __shmark_wrap_long_line() {
 # @param  (integer) List position
 # @return (string)  Bookmarked directory path at given list position
 __shmark_get_directory_from_list_index() {
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     if [[ $# -ne 1 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires an integer argument."
@@ -1002,7 +1004,7 @@ __shmark_get_list_index_from_directory() {
 # @param  (str|int) Directory path or its list position
 # @return (integer) Line number in bookmarks file for given directory
 __shmark_get_line_number() {
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     if [[ $# -ne 1 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires an argument."
@@ -1076,7 +1078,7 @@ __shmark_update_category() {
 # @param $1 (integer) Line number from bookmarks file
 # @param $2 (string)  The replacement text (a formatted directory bookmark)
 __shmark_replace_line() { # void
-    __shmark_check_file_var || return 1
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
 
     if [[ $# -ne 2 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires two arguments."
@@ -1091,48 +1093,26 @@ __shmark_replace_line() { # void
 }
 
 ##
-# Check if the SHMARK_FILE variable is set.
+# Check if an evironment variable is set and not null.
 #
-# @return   Exit status: 0=true, >0=false
-__shmark_check_file_var() {
-    #unset SHMARK_FILE  # DEBUG 'set -o nounset (set -u)'
-    if [[ -z "${SHMARK_FILE:+1}" ]]; then
-        __shmark_envvar_error "SHMARK_FILE"
-        return 1
-    fi
-    return 0
-}
-
-##
-# Check if the SHMARK_DEFAULT_CATEGORY variable is set.
-#
-# @return   Exit status: 0=true, >0=false
-__shmark_check_category_var() {
-    #unset SHMARK_DEFAULT_CATEGORY  # DEBUG 'set -o nounset (set -u)'
-    if [[ -z "${SHMARK_DEFAULT_CATEGORY:+1}" ]]; then
-        __shmark_envvar_error "SHMARK_DEFAULT_CATEGORY"
-        return 1
-    fi
-    return 0
-}
-
-##
-# Produce an error message for an unset environment variable
-#
-# @param  (string) The name of an environment variable (not the actual var)
-# @return (string) An error message for the given variable
-__shmark_envvar_error() {
+# @param  (string) The name of a variable (not the actual variable)
+# @return Exit status: 0=true, >0=false
+__shmark_check_envvar() {
     if [[ $# -ne 1 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires an argument."
-        echo >&2 "Usage: $FUNCNAME ENV_VAR(str)"
+        echo >&2 "Usage: $FUNCNAME VAR_NAME(str)"
         return 1
     fi
-    local var=$1
-    cat <<-__EOF__ >&2
-		Error: The $var environment variable is not set.
-		  It probably got unset at some point. If you exported a custom
-		  value, try exporting it again and then sourcing 'shmark.sh'
-		  to reset it. Otherwise, just source 'shmark.sh' again.
-	__EOF__
+    local var_ref=$1                    # assign the name of a variable
+    if [[ -z "${!var_ref:+1}" ]]; then  # dereference to get value
+        cat <<-__EOF__ >&2
+			Error: The '\$$var_ref' environment variable is not set.
+			  It probably got unset at some point. If you exported a custom
+			  value, try exporting it again and then sourcing 'shmark.sh'
+			  to reset it. Otherwise, just source 'shmark.sh' again.
+		__EOF__
+        return 1
+    fi
+    return 0
 }
 
