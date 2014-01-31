@@ -428,9 +428,12 @@ shmark() {
     done
 
     # If no action is given, check for a default set in the environment
+    #unset SHMARK_DEFAULT_ACTION  # DEBUG: test nounset
+    : ${SHMARK_DEFAULT_ACTION:=}  # Handle 'set -o nounset'
     local action=${1:-$SHMARK_DEFAULT_ACTION}
 
     if [ -z "$action" ]; then
+        echo >&2 "Error: An 'action' argument is required."
         _shmark_usage
         return $?
     fi
@@ -763,6 +766,7 @@ _shmark_edit() {
 
 _shmark_list() {
     __shmark_check_file_var || return 1
+    __shmark_check_category_var || return 1
 
     local listall=${listall:-0}
     local dir_only=${dir_only:-0}
@@ -1093,14 +1097,42 @@ __shmark_replace_line() { # void
 __shmark_check_file_var() {
     #unset SHMARK_FILE  # DEBUG 'set -o nounset (set -u)'
     if [[ -z "${SHMARK_FILE:+1}" ]]; then
-        cat <<-__EOF__ >&2
-			Error: The SHMARK_FILE environment variable is not set. It
-			  probably got unset at some point. If you exported a custom
-			  location, try exporting it again and then sourcing 'shmark.sh'
-			  to reset it. Otherwise, just source 'shmark.sh' again.
-		__EOF__
+        __shmark_envvar_error "SHMARK_FILE"
         return 1
     fi
     return 0
+}
+
+##
+# Check if the SHMARK_DEFAULT_CATEGORY variable is set.
+#
+# @return   Exit status: 0=true, >0=false
+__shmark_check_category_var() {
+    #unset SHMARK_DEFAULT_CATEGORY  # DEBUG 'set -o nounset (set -u)'
+    if [[ -z "${SHMARK_DEFAULT_CATEGORY:+1}" ]]; then
+        __shmark_envvar_error "SHMARK_DEFAULT_CATEGORY"
+        return 1
+    fi
+    return 0
+}
+
+##
+# Produce an error message for an unset environment variable
+#
+# @param  (string) The name of an environment variable (not the actual var)
+# @return (string) An error message for the given variable
+__shmark_envvar_error() {
+    if [[ $# -ne 1 ]]; then
+        echo >&2 "Error: '$FUNCNAME()' requires an argument."
+        echo >&2 "Usage: $FUNCNAME ENV_VAR(str)"
+        return 1
+    fi
+    local var=$1
+    cat <<-__EOF__ >&2
+		Error: The $var environment variable is not set.
+		  It probably got unset at some point. If you exported a custom
+		  value, try exporting it again and then sourcing 'shmark.sh'
+		  to reset it. Otherwise, just source 'shmark.sh' again.
+	__EOF__
 }
 
