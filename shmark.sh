@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2014-01-30 Last modified
+# @date    2014-01-31 Last modified
 # @date    2014-01-18 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -926,6 +926,8 @@ __shmark_format_list_items() {
 }
 
 ##
+# Wrap long lines on a delimiter
+#
 # @param $1 (integer) Maximum line width
 # @param $2 (string)  Delimiter for splitting line
 # @param $3 (string)  Indent for wrapped lines (literal characters)
@@ -935,37 +937,57 @@ __shmark_wrap_long_line() {
     if [[ $# -ne 4 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires four arguments."
         echo >&2 \
-            "Usage: $FUNCNAME WIDTH(int) DELIMITER(str) INDENT(str) LINE(str)"
+            "Usage: $FUNCNAME WIDTH(int) DELIMITER(char) INDENT(str) LINE(str)"
         return 1
     fi
-    local width="$1"      # maximum line width
-    local delimiter="$2"  # delimiter for splitting line
-    local indent="$3"     # indent for wrapped lines (literal characters)
-    local line="$4"       # the line to wrap
-    local wrapped_line=
-    local tmp final_line segments item
-    if [ ${#line} -gt $width ]; then
-        while IFS=$delimiter read -ra segments; do
+    local width="$1"   # maximum line width
+    local delim="$2"   # delimiter for splitting line
+    local indent="$3"  # indent for wrapped lines
+    local line="$4"    # the line to wrap
+    local wrapped_lines=( "" )
+    local idx=0
+    local segments item tmp final_text
+
+    if [[ ${#delim} -ne 1 ]]; then
+        echo >&2 "Error: $FUNCNAME(): DELIMITER must be a single character."
+        echo >&2 \
+            "Usage: $FUNCNAME WIDTH(int) DELIMITER(char) INDENT(str) LINE(str)"
+        return 1
+    fi
+
+    if [[ ${#line} -gt $width ]]; then
+        while IFS=$delim read -ra segments; do
             for item in "${segments[@]}"; do
-                if [ -n "$wrapped_line" ]; then
-                    tmp="${wrapped_line}/$item"
-                    if [ $(tail -1 <<< "$tmp" | tr -d '\n' | wc -c) -lt $width ]
-                    then
-                        wrapped_line="$tmp"
+                if [[ -n "${wrapped_lines[$idx]}" ]]; then
+                    # Line is not empty, so append the next segment:
+                    tmp="${wrapped_lines[$idx]}${delim}${item}"
+                    if [[ ${#tmp} -lt $width ]]; then
+                        # If the width of the new line is still less than the
+                        # max, replace the existing line with the new line:
+                        wrapped_lines[$idx]="$tmp"
                     else
-                        wrapped_line="${wrapped_line}/"$'\n'"${indent}${item}"
+                        # The new line is too long so chop off the last added
+                        # segment (but keep a trailing delimiter):
+                        wrapped_lines[$idx]="${tmp%${delim}*}${delim}"
+                        # Put that last segment on the next line:
+                        (( idx++ )) || :
+                        wrapped_lines[$idx]="${indent}${item}"
                     fi
                 else
-                    wrapped_line="$item"
+                    # This line is empty, so just add the first segment:
+                    wrapped_lines[$idx]="$item"
                 fi
-                #echo DEBUG:; echo "$wrapped_line"
             done
-            final_line="$wrapped_line"
+            # Restore trailing delimiter if original line had one:
+            [[ "${line:(-1):1}" == "${delim}" ]] \
+                && wrapped_lines[$idx]="${wrapped_lines[$idx]%${delim}}${delim}"
+            # Join array of lines:
+            final_text=$( IFS=$'\n' ; echo "${wrapped_lines[*]}" )
         done <<< "$line"
     else
-        final_line="$line"
+        final_text="$line"
     fi
-    echo "$final_line"
+    echo "$final_text"
 }
 
 ##
