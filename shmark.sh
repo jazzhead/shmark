@@ -607,7 +607,7 @@ _shmark_insert() {
         "       from the bookmarks list. To append as the last bookmark," \
         "       use ${np}; otherwise, use a number 1-${line_total}."
     )
-    local line_num list_pos msg
+    local line_num list_pos msg bookmark
 
     # Get the target list postion:
     if [[ -z "$target_list_pos" ]]; then
@@ -651,7 +651,6 @@ _shmark_insert() {
     # Need category of bookmark currently occupying target list position
     local category=$(awk -F\| 'NR=='$line_num' {print $1}' "$SHMARK_FILE")
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
-    local curdate="$(date '+%F %T')"
 
     #printf >&2 "DEBUG: ${FUNCNAME}(): %s\n" \
     #    "line_total = $line_total" \
@@ -668,18 +667,29 @@ _shmark_insert() {
         # Find the list position of the old bookmark (so we can adjust the
         # target position if neccesary after deleting the old bookmark):
         local cur_list_pos=$(__shmark_get_list_index_from_directory "$curdir")
+
         # Delete the old bookmark:
         local delete_msg="Old bookmark deleted."
         local should_report_failure=0  # set to 1 for debugging
-        _shmark_delete "$cur_list_pos"
+        bookmark=$(_shmark_delete "$cur_list_pos")
+
+        # Update category for existing bookmark:
+        bookmark=$(__shmark_update_category "$bookmark" "$category")
+
         # If the line number for the old bookmark was less than the target
         # line number, decrement both the target line number (to reflect the
         # new target number) and the line total:
         (( cur_line_num < line_num )) && (( line_num--, line_total-- ))
+
         # If the old bookmark list position was above the target list
         # position, then decrement the target postion:
         (( cur_list_pos < list_pos )) && (( list_pos-- ))
+    else
+        # New bookmark:
+        local curdate="$(date '+%F %T')"
+        bookmark="$category|$curdir|$curdate|$curdate"
     fi
+
     #printf >&2 "DEBUG: ${FUNCNAME}(): %s\n" \
     #    "line_total = $line_total" \
     #    "list_pos   = $list_pos" \
@@ -691,10 +701,6 @@ _shmark_insert() {
     [[ -z "$ed_cmd" ]] && ed_cmd="${line_num}i"
 
     #echo >&2 "DEBUG: ${FUNCNAME}(): ed_cmd   = $ed_cmd"
-
-    # Output line format:  category|directory|date added|last visited
-    local bookmark="$category|$curdir|$curdate|$curdate"
-
     #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
 
     printf '%s\n' "$ed_cmd" "$bookmark" . w | ed -s "$SHMARK_FILE"
@@ -779,7 +785,7 @@ _shmark_move() {
     # Delete the old bookmark:
     local delete_msg="Old bookmark deleted."
     local should_report_failure=0  # set to 1 for debugging
-    _shmark_delete "$from_list_pos"
+    _shmark_delete "$from_list_pos" >/dev/null
 
     # If the line number for the old bookmark was less than the target
     # line number, decrement both the target line number (to reflect the
@@ -814,8 +820,9 @@ _shmark_move() {
 ##
 # Delete a bookmark.
 #
-# @param (str|int) Bookmarked directory path or its list position
-# @return Exit status: 0=true, >0=false
+# @param  (str|int) Bookmarked directory path or its list position
+# @return (string)  The bookmark deleted (if any)
+#         Exit status: 0=true, >0=false
 _shmark_delete() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
 
@@ -828,8 +835,10 @@ _shmark_delete() {
     local delete_msg="${delete_msg:-Bookmark deleted.}"
     local should_report_failure="${should_report_failure:-1}"
     local line_num=$(__shmark_get_line_number "$1")
+    local bookmark
     if [[ "$line_num" =~ ^[1-9][0-9]*$ ]]; then
         cp -p ${SHMARK_FILE}{,.bak}
+        bookmark=$(sed $line_num'q;d' "$SHMARK_FILE") # get existing bookmark
         if [[ $(wc -l < "$SHMARK_FILE") -eq 1 ]]; then
             # 'ed' seemingly can't delete all lines from a file, so just
             # redirect nothing to overwrite the file contents if there is only
@@ -838,7 +847,8 @@ _shmark_delete() {
         else
             printf '%s\n' "${line_num}d" . w | ed -s "$SHMARK_FILE" >/dev/null
         fi
-        echo >&2 "$delete_msg"
+        echo >&2 "$delete_msg"  # diagnostic message to STDERR -- not captured
+        echo "$bookmark"        # old bookmark to STDOUT for capturing
         return 0
     else
         if [[ "$should_report_failure" -eq 1 ]]; then   # direct 'delete' call
@@ -995,6 +1005,14 @@ _shmark_env() {
 # functions and are identified with a double underscore (__) prefix.
 
 ##
+# Prepare a new bookmark for the current directory for adding or appending.
+#
+# If a bookmark for the current directory already exists, it is extracted and
+# then deleted from the file. The category for the bookmark is then updated. If
+# there was no existing bookmark for the current directory, then a new one is
+# created. In either case, the formatted bookmark is returned to the caller via
+# STDOUT.
+#
 # @param  (string) Optional category
 # @return (string) Formatted bookmark
 __shmark_prepare_new_bookmark() {
@@ -1004,14 +1022,22 @@ __shmark_prepare_new_bookmark() {
     [[ -z "$curdir" ]] && return 1
 
     # Delete old bookmark first if one exists. Also makes a backup of the
-    # bookmark file so don't make another backup in this function.
+    # bookmark file so don't make another backup in this function. If a
+    # bookmark is deleted, it is returned via STDOUT.
     local delete_msg="Old bookmark deleted."
     local should_report_failure=0
-    _shmark_delete "$curdir" || true  # continue regardless
+    local bookmark=$(_shmark_delete "$curdir") || true  # continue regardless
 
-    # Output line format:  category|directory|date added|last visited
-    local curdate="$(date '+%F %T')"
-    echo "$category|$curdir|$curdate|$curdate"
+    if [[ -z "$bookmark" ]]; then
+        # New bookmark:
+        local curdate="$(date '+%F %T')"
+        bookmark="$category|$curdir|$curdate|$curdate"
+    else
+        # Update category for existing bookmark:
+        bookmark=$(__shmark_update_category "$bookmark" "$category")
+    fi
+
+    echo "$bookmark"
 }
 
 ##
