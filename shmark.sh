@@ -65,7 +65,7 @@ if [[ -z "$SHMARK_FILE" ]]; then
     fi
 fi
 
-# Expand tilde for home directory path:
+# Substitute home directory path for tilde:
 SHMARK_FILE="${SHMARK_FILE/#~/$HOME}"
 
 # Create bookmarks file if one doesn't exist:
@@ -512,6 +512,7 @@ shmark() {
 # @return Exit status: 0=true, >0=false
 _shmark_cd() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     if [[ $# -eq 0 ]]; then
         echo >&2 "Error: The 'cd' action requires an argument."
@@ -563,6 +564,7 @@ _shmark_cd() {
 # @return Exit status: 0=true, >0=false
 _shmark_add() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
 
@@ -580,6 +582,7 @@ _shmark_add() {
 # @return Exit status: 0=true, >0=false
 _shmark_append() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
 
@@ -597,6 +600,7 @@ _shmark_append() {
 # @return Exit status: 0=true, >0=false
 _shmark_insert() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     local target_list_pos="${1:-}"
     local ed_cmd=
@@ -697,6 +701,7 @@ _shmark_insert() {
 # @return Exit status: 0=true, >0=false
 _shmark_move() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     local line_total=$(echo $(wc -l < "$SHMARK_FILE"))
     local np=$((line_total + 1)) # 'np' = "next position" - need short var for:
@@ -783,6 +788,7 @@ _shmark_move() {
 #         Exit status: 0=true, >0=false
 _shmark_delete() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     if [[ $# -eq 0 ]]; then
         echo >&2 "Error: The 'delete' action requires an argument."
@@ -826,6 +832,7 @@ _shmark_delete() {
 # @return   Exit status: 0=true, >0=false
 _shmark_chcat() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     if [[ $# -ne 2 ]]; then
         echo >&2 "Error: The 'chcat' action requires two arguments."
@@ -853,6 +860,7 @@ _shmark_chcat() {
 
 _shmark_edit() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     local editor=${EDITOR-vi}
     echo >&2 "Editing bookmarks file (${SHMARK_FILE/#$HOME/~})..."
@@ -864,6 +872,7 @@ _shmark_list() {
     #unset SHMARK_DEFAULT_CATEGORY  # DEBUG 'set -o nounset (set -u)'
     __shmark_check_envvar 'SHMARK_FILE'             || return 1
     __shmark_check_envvar 'SHMARK_DEFAULT_CATEGORY' || return 1
+    __shmark_set_absolute_bookmark_path
 
     local listall=${listall:-0}
     local dir_only=${dir_only:-0}
@@ -899,6 +908,7 @@ _shmark_list() {
 
 _shmark_list_categories() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     local include_blank_categories=${include_blank_categories=-0}
     local categories=$(cut -d\| -f1 "$SHMARK_FILE" | sort -u)
@@ -921,12 +931,14 @@ _shmark_listdir() {
 
 _shmark_listunsort() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     cut -d\| -f2 "$SHMARK_FILE"
 }
 
 _shmark_print() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     local width=$( echo $( wc -l < "$SHMARK_FILE" ) )
     width=${#width}
@@ -935,6 +947,7 @@ _shmark_print() {
 
 _shmark_undo() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     if [[ -f "${SHMARK_FILE}.bak" ]]; then
         echo >&2 "Undoing last edit to the bookmarks file..."
@@ -1005,6 +1018,7 @@ __shmark_prepare_new_bookmark() {
 # @return   (string)  Formatted list items
 __shmark_format_list_items() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     if [[ $# -ne 3 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires three arguments."
@@ -1106,6 +1120,7 @@ __shmark_wrap_long_line() {
 # @return (string)  Bookmarked directory path at given list position
 __shmark_get_directory_from_list_index() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     if [[ $# -ne 1 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires an integer argument."
@@ -1138,6 +1153,7 @@ __shmark_get_list_index_from_directory() {
 # @return (integer) Line number in bookmarks file for given directory
 __shmark_get_line_number() {
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     if [[ $# -ne 1 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires an argument."
@@ -1212,6 +1228,7 @@ __shmark_update_category() {
 # @param $2 (string)  The replacement text (a formatted directory bookmark)
 __shmark_replace_line() { # void
     __shmark_check_envvar 'SHMARK_FILE' || return 1
+    __shmark_set_absolute_bookmark_path
 
     if [[ $# -ne 2 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires two arguments."
@@ -1247,5 +1264,17 @@ __shmark_check_envvar() {
         return 1
     fi
     return 0
+}
+
+##
+# Substitute home directory path for tilde in bookmarks path.
+#
+# The HOME directory is substituted for a tilde when this file is first
+# sourced, but if a new bookmarks path is exported and this file isn't sourced
+# again, then the tilde will need to be expanded by each function.
+#
+__shmark_set_absolute_bookmark_path() {
+    [[ ${SHMARK_FILE:0:1} == '~' ]] \
+        && SHMARK_FILE="${SHMARK_FILE/#~/$HOME}"
 }
 
