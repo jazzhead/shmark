@@ -281,10 +281,11 @@ _shmark_actions_help() {
         following it will all be pushed down one position.
 
         A bookmark can be appended to the end of the list by giving a
-        list position that is greater than the last position, but the
-        'append' command is made specifically for appending.
-        Additionally, the 'append' command can append to specific
-        categories rather than only the last listed category.
+        list position that is greater than the last position (shown by
+        the 'listall' command), but the 'append' command is made
+        specifically for appending. Additionally, the 'append' command
+        can append to specific categories rather than only the last
+        listed category.
 
     list|ls
         Show a list of saved bookmarks. Bookmarks are listed by category
@@ -319,6 +320,20 @@ _shmark_actions_help() {
         not shown. Like the 'listdir' action, this action is mainly
         available for use with any external command that might want the
         data.
+
+    move|mv FROM_POSITION TO_POSITION
+        Move a bookmark from one list postion (number) to another. List
+        positions can be found in the output of the 'list' or 'listall'
+        actions. The bookmark currently occupying the target list
+        position as well as any bookmarks following it will all be
+        pushed down one position.
+
+        A bookmark can be appended to the end of the list by giving a
+        list position that is greater than the last position (shown by
+        the 'listall' command), but the 'append' command is made
+        specifically for appending. Additionally, the 'append' command
+        can append to specific categories rather than only the last
+        listed category.
 
     print
         Print the raw, unformatted bookmark file. The lines are prefixed
@@ -445,6 +460,7 @@ shmark() {
         add|a           ) shift; _shmark_add    "$@" ;;
         append|app      ) shift; _shmark_append "$@" ;;
         insert|ins      ) shift; _shmark_insert "$@" ;;
+        move|mv         ) shift; _shmark_move   "$@" ;;
         del|rm          ) shift; _shmark_delete "$@" ;;
         chcat|cc        ) shift; _shmark_chcat  "$@" ;;
         list|ls         ) _shmark_list               ;;
@@ -683,6 +699,116 @@ _shmark_insert() {
 
     printf '%s\n' "$ed_cmd" "$bookmark" . w | ed -s "$SHMARK_FILE"
     echo >&2 "Bookmark for '$curdir' inserted into bookmarks file."
+}
+
+##
+# Move a directory bookmark from one list position to another.
+#
+# @param $1 (integer) List position of bookmark to move
+# @param $2 (integer) Target list position to move the bookmark
+# @return Exit status: 0=true, >0=false
+_shmark_move() {
+    __shmark_check_envvar 'SHMARK_FILE' || return 1
+
+    local line_total=$(echo $(wc -l < "$SHMARK_FILE"))
+    local np=$((line_total + 1)) # 'np' = "next position" - need short var for:
+    local errmsg=$( printf "%s\n" \
+        "Error: The 'move' action requires two number arguments chosen" \
+        "       from the bookmarks list -- a source position and a target" \
+        "       postition. To append as the last bookmark, use ${np} as the" \
+        "       target postion; otherwise, use a number 1-${line_total}."
+    )
+
+    if [[ $# -ne 2 ]]; then
+        echo >&2 "$errmsg"
+        _shmark_usage
+        return $?
+    fi
+
+    local from_list_pos="$1"
+    local to_list_pos="$2"
+    local ed_cmd=
+    local from_line_num from_list_pos to_line_num to_list_pos
+
+    # Make sure list position arguments are non-zero integers:
+    __shmark_validate_num "$from_list_pos" "$errmsg" || return $?
+    __shmark_validate_num "$to_list_pos" "$errmsg" || return $?
+
+    # If the target list position number is greater than the bookmark total,
+    # that means append the new bookmark as the very last bookmark.
+    if [[ $to_list_pos -gt $line_total ]]; then
+        # Need the list position for the current last bookmark so we can look
+        # up its actual line number and then find out what its category is.
+        to_list_pos=$line_total
+        # The 'ed' command for appending (`a`) after the last line (`$`).
+        ed_cmd='$a'
+    fi
+
+    # Find out the line numbers in the bookmarks file for the bookmarka at
+    # these list positions:
+    from_line_num=$(__shmark_get_line_number "$from_list_pos")
+    to_line_num=$(__shmark_get_line_number "$to_list_pos")
+
+    # Make sure the line numbers are non-zero integers:
+    __shmark_validate_num "$from_line_num" "$errmsg" || return $?
+    __shmark_validate_num "$to_line_num" "$errmsg" || return $?
+
+    # Get existing bookmark w/o the category (fields 2-4):
+    local bookmark=$(
+        awk -F\| 'NR=='$from_line_num' {printf "%s|%s|%s",$2,$3,$4}' \
+            "$SHMARK_FILE"
+    )
+    local directory=${bookmark%%|*} # just so we can report it
+
+    # Need category of bookmark currently occupying target list position
+    local category=$(awk -F\| 'NR=='$to_line_num' {print $1}' "$SHMARK_FILE")
+
+    # Update bookmark with new category:
+    bookmark="${category}|${bookmark}"
+
+    #printf >&2 "DEBUG: ${FUNCNAME}(): %s\n" \
+    #    "line_total    = $line_total" \
+    #    "from_list_pos = $from_list_pos" \
+    #    "from_line_num = $from_line_num" \
+    #    "to_list_pos   = $to_list_pos" \
+    #    "to_line_num   = $to_line_num" \
+    #    "category      = $category" \
+    #    "directory     = $directory"
+    #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
+
+    # Delete the old bookmark:
+    local delete_msg="Old bookmark deleted."
+    local should_report_failure=0  # set to 1 for debugging
+    _shmark_delete "$from_list_pos"
+
+    # If the line number for the old bookmark was less than the target
+    # line number, decrement both the target line number (to reflect the
+    # new target number) and the line total:
+    (( from_line_num < to_line_num )) && (( to_line_num--, line_total-- ))
+
+    # If the old bookmark list position was above the target list
+    # position, then decrement the target postion:
+    (( from_list_pos < to_list_pos )) && (( to_list_pos-- ))
+
+    #printf >&2 "DEBUG: ${FUNCNAME}(): %s\n" \
+    #    "line_total    = $line_total" \
+    #    "from_list_pos = $from_list_pos" \
+    #    "from_line_num = $from_line_num" \
+    #    "to_list_pos   = $to_list_pos" \
+    #    "to_line_num   = $to_line_num" \
+    #    "category      = $category" \
+    #    "directory     = $directory"
+    #echo >&2 "$bookmark"
+    #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
+
+    # If we don't have an 'ed' command yet, that means we're inserting:
+    [[ -z "$ed_cmd" ]] && ed_cmd="${to_line_num}i"
+
+    #echo >&2 "DEBUG: ${FUNCNAME}(): ed_cmd   = $ed_cmd"
+    #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
+
+    printf '%s\n' "$ed_cmd" "$bookmark" . w | ed -s "$SHMARK_FILE"
+    echo >&2 "Bookmark for '$directory' moved."
 }
 
 ##
