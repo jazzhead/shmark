@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2014-01-31 Last modified
+# @date    2014-02-01 Last modified
 # @date    2014-01-18 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -42,55 +42,77 @@
 
 [ -n "$BASH_VERSION" ] || return    # bash required
 
-SHMARK_VERSION="@@VERSION@@"
 
+# ==== MAIN ==================================================================
 
-# ==== SETUP =================================================================
+##
+# Validate and/or create a bookmarks file.
+#
+__shmark_setup_bookmark_file() {
+    #echo >&2 "DEBUG: ${FUNCNAME}(): running..."
 
-# Assign a null value if the bookmark file variable is undefined:
-: ${SHMARK_FILE:=}
+    # Assign a null value if the bookmark file variable is undefined:
+    : ${SHMARK_FILE:=}
 
-# If null, use a default value:
-if [[ -z "$SHMARK_FILE" ]]; then
-    if [[ -d "${HOME}/var/shmark" ]]; then
-        # Avoid creating another dot file/dir if an alternate has been set up
-        SHMARK_FILE="${HOME}/var/shmark/bookmarks"
-    else
-        # Default to creating a dot directory
-        SHMARK_FILE="${HOME}/.shmark/bookmarks"
-        [[ -d "${HOME}/.shmark" ]] || mkdir -m0700 "${HOME}/.shmark" || {
-            echo >&2 "Couldn't create directory at '${HOME}/.shmark'"
-            kill -SIGINT $$
-        }
+    # If null, use a default value:
+    if [[ -z "$SHMARK_FILE" ]]; then
+        if [[ -d "${HOME}/var/shmark" ]]; then
+            # Avoid creating another dot file/dir if alternate has been set up:
+            SHMARK_FILE="${HOME}/var/shmark/bookmarks"
+        else
+            # Default to creating a dot directory:
+            SHMARK_FILE="${HOME}/.shmark/bookmarks"
+            [[ -d "${HOME}/.shmark" ]] || mkdir -m0700 "${HOME}/.shmark" \
+                || {
+                echo >&2 "Couldn't create directory at '${HOME}/.shmark'"
+                kill -SIGINT $$
+            }
+        fi
     fi
-fi
 
-# Substitute home directory path for tilde:
-SHMARK_FILE="${SHMARK_FILE/#~/$HOME}"
+    # Substitute home directory path for tilde:
+    [[ ${SHMARK_FILE:0:1} == '~' ]] \
+        && SHMARK_FILE="${SHMARK_FILE/#~/$HOME}"
 
-# Create bookmarks file if one doesn't exist:
-[[ -f "$SHMARK_FILE" ]] \
-    || { touch "$SHMARK_FILE" && chmod 600 "$SHMARK_FILE" ; } \
-    || { echo >&2 "Couldn't create a bookmarks file at '$SHMARK_FILE'"
-         kill -SIGINT $$ ; }
+    # Create bookmarks file if one doesn't exist:
+    [[ -f "$SHMARK_FILE" ]] \
+        || { touch "$SHMARK_FILE" && chmod 600 "$SHMARK_FILE" ; } \
+        || { echo >&2 "Couldn't create a bookmarks file at '$SHMARK_FILE'"
+    kill -SIGINT $$ ; }
+}
+
+##
+# Set any undefined environment variables.
+#
+# These environment variables can be customized in .bash_profile or .bashrc.
+# This function should be called by all "action" functions.
+#
+__shmark_setup_envvars() {
+    #echo >&2 "DEBUG: ${FUNCNAME}(): running..."
+
+    SHMARK_VERSION="@@VERSION@@"
+
+    __shmark_setup_bookmark_file #|| return 1
+
+    # The default action is used if shmark() is run without any args.
+    : ${SHMARK_DEFAULT_ACTION:=}
+
+    # The default category is used for any bookmarks that don't have a
+    # category. This value is never written to the bookmarks file. If you
+    # change the value of this environment variable, that value will be used
+    # whenever uncategorized bookmarks are listed.
+    : ${SHMARK_DEFAULT_CATEGORY:=MISCELLANEOUS}
+
+    return 0
+}
 
 #
-# Check if any default environment variables have been defined. These
-# environment variables can be set in .bash_profile or .bashrc. Make sure
-# they are set before this functions file is sourced. If you change any of
-# them after sourcing this file, then source the file again.
+# This is the only code that runs when the file is sourced.
+# The rest of the file is comprised of functions.
 #
-# The default action is used if shmark() is run without any args.
-: ${SHMARK_DEFAULT_ACTION:=}
-#
-# The default category is used for any bookmarks that don't have a category.
-# This value is never written to the bookmarks file. If you change the value of
-# this environment variable, that value will be used whenever uncategorized
-# bookmarks are listed.
-: ${SHMARK_DEFAULT_CATEGORY:=MISCELLANEOUS}
+__shmark_setup_envvars
 
 #echo "DEBUG: $SHMARK_FILE  (exiting early...)"; return 1
-
 
 # ==== INFO FUNCTIONS ========================================================
 
@@ -358,6 +380,7 @@ ___EndUsage___
 } >&2
 
 _shmark_version() {
+    __shmark_setup_envvars
     cat <<___EndVersion___
 shmark $SHMARK_VERSION
 Copyright (c) 2014 Steve Wheeler
@@ -370,7 +393,7 @@ ___EndVersion___
 }
 
 
-# ==== MAIN FUNCTION =========================================================
+# ==== PRIMARY INTERFACE =====================================================
 
 ##
 # This function is the primary interface that calls all the other functions.
@@ -511,8 +534,7 @@ shmark() {
 # @param  (str|int) Bookmarked directory or list position
 # @return Exit status: 0=true, >0=false
 _shmark_cd() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
+    __shmark_setup_envvars
 
     if [[ $# -eq 0 ]]; then
         echo >&2 "Error: The 'cd' action requires an argument."
@@ -563,8 +585,7 @@ _shmark_cd() {
 # @param  (string) Optional category for bookmark
 # @return Exit status: 0=true, >0=false
 _shmark_add() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
+    __shmark_setup_envvars
 
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
 
@@ -581,8 +602,7 @@ _shmark_add() {
 # @param  (string) Optional category for bookmark
 # @return Exit status: 0=true, >0=false
 _shmark_append() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
+    __shmark_setup_envvars
 
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
 
@@ -599,8 +619,7 @@ _shmark_append() {
 # @param  (integer) List position for insertion
 # @return Exit status: 0=true, >0=false
 _shmark_insert() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
+    __shmark_setup_envvars
 
     local target_list_pos="${1:-}"
     local ed_cmd=
@@ -700,8 +719,7 @@ _shmark_insert() {
 # @param $2 (integer) Target list position to move the bookmark
 # @return Exit status: 0=true, >0=false
 _shmark_move() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
+    __shmark_setup_envvars
 
     local line_total=$(echo $(wc -l < "$SHMARK_FILE"))
     local np=$((line_total + 1)) # 'np' = "next position" - need short var for:
@@ -787,8 +805,7 @@ _shmark_move() {
 # @return (string)  The bookmark deleted (if any)
 #         Exit status: 0=true, >0=false
 _shmark_delete() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
+    __shmark_setup_envvars
 
     if [[ $# -eq 0 ]]; then
         echo >&2 "Error: The 'delete' action requires an argument."
@@ -831,8 +848,7 @@ _shmark_delete() {
 # @param $2 (str|int) Bookmarked directory path or its list position
 # @return   Exit status: 0=true, >0=false
 _shmark_chcat() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
+    __shmark_setup_envvars
 
     if [[ $# -ne 2 ]]; then
         echo >&2 "Error: The 'chcat' action requires two arguments."
@@ -859,8 +875,7 @@ _shmark_chcat() {
 }
 
 _shmark_edit() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
+    __shmark_setup_envvars
 
     local editor=${EDITOR-vi}
     echo >&2 "Editing bookmarks file (${SHMARK_FILE/#$HOME/~})..."
@@ -870,9 +885,7 @@ _shmark_edit() {
 _shmark_list() {
     #unset SHMARK_FILE              # DEBUG 'set -o nounset (set -u)'
     #unset SHMARK_DEFAULT_CATEGORY  # DEBUG 'set -o nounset (set -u)'
-    __shmark_check_envvar 'SHMARK_FILE'             || return 1
-    __shmark_check_envvar 'SHMARK_DEFAULT_CATEGORY' || return 1
-    __shmark_set_absolute_bookmark_path
+    __shmark_setup_envvars
 
     local listall=${listall:-0}
     local dir_only=${dir_only:-0}
@@ -907,8 +920,7 @@ _shmark_list() {
 }
 
 _shmark_list_categories() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
+    __shmark_setup_envvars
 
     local include_blank_categories=${include_blank_categories=-0}
     local categories=$(cut -d\| -f1 "$SHMARK_FILE" | sort -u)
@@ -930,15 +942,13 @@ _shmark_listdir() {
 }
 
 _shmark_listunsort() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
+    __shmark_setup_envvars
 
     cut -d\| -f2 "$SHMARK_FILE"
 }
 
 _shmark_print() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
+    __shmark_setup_envvars
 
     local width=$( echo $( wc -l < "$SHMARK_FILE" ) )
     width=${#width}
@@ -946,8 +956,7 @@ _shmark_print() {
 }
 
 _shmark_undo() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
+    __shmark_setup_envvars
 
     if [[ -f "${SHMARK_FILE}.bak" ]]; then
         echo >&2 "Undoing last edit to the bookmarks file..."
@@ -960,6 +969,8 @@ _shmark_undo() {
 }
 
 _shmark_env() {
+    __shmark_setup_envvars
+
     local v
     printf "%s\n" "Current shmark environment variables:" ""
     for v in $(echo ${!SHMARK_@}); do
@@ -972,8 +983,10 @@ _shmark_env() {
 # ==== UTILITY FUNCTIONS (PRIVATE) ===========================================
 
 # These functions are called by the other functions to perform various tasks
-# and aren't meant to be called directly. They can be thought of as private
-# functions and are identified with a double underscore (__) prefix.
+# and aren't meant to be called directly. They assume that the calling function
+# has already validated the environment variables. These functions can be
+# thought of as private functions and are identified with a double underscore
+# (__) prefix.
 
 ##
 # Prepare a new bookmark for the current directory for adding or appending.
@@ -1017,9 +1030,6 @@ __shmark_prepare_new_bookmark() {
 # @param $3 (string)  Bookmark category
 # @return   (string)  Formatted list items
 __shmark_format_list_items() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
-
     if [[ $# -ne 3 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires three arguments."
         echo >&2 "Usage: $FUNCNAME DIR_ONLY(int) IDX(int) CATEGORY(str)"
@@ -1119,9 +1129,6 @@ __shmark_wrap_long_line() {
 # @param  (integer) List position
 # @return (string)  Bookmarked directory path at given list position
 __shmark_get_directory_from_list_index() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
-
     if [[ $# -ne 1 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires an integer argument."
         echo >&2 "Usage: $FUNCNAME INTEGER"
@@ -1152,9 +1159,6 @@ __shmark_get_list_index_from_directory() {
 # @param  (str|int) Directory path or its list position
 # @return (integer) Line number in bookmarks file for given directory
 __shmark_get_line_number() {
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
-
     if [[ $# -ne 1 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires an argument."
         echo >&2 "Usage: $FUNCNAME DIRECTORY_PATH|LIST_POSITION"
@@ -1227,9 +1231,6 @@ __shmark_update_category() {
 # @param $1 (integer) Line number from bookmarks file
 # @param $2 (string)  The replacement text (a formatted directory bookmark)
 __shmark_replace_line() { # void
-    __shmark_check_envvar 'SHMARK_FILE' || return 1
-    __shmark_set_absolute_bookmark_path
-
     if [[ $# -ne 2 ]]; then
         echo >&2 "Error: '$FUNCNAME()' requires two arguments."
         echo >&2 "Usage: $FUNCNAME LINE_NUM(int) BOOKMARK_LINE(str)"
@@ -1240,41 +1241,5 @@ __shmark_replace_line() { # void
     cp -p ${SHMARK_FILE}{,.bak}
     printf '%s\n' "${line_num}c" "$line" . w |
     ed -s "$SHMARK_FILE" >/dev/null
-}
-
-##
-# Check if an evironment variable is set and not null.
-#
-# @param  (string) The name of a variable (not the actual variable)
-# @return Exit status: 0=true, >0=false
-__shmark_check_envvar() {
-    if [[ $# -ne 1 ]]; then
-        echo >&2 "Error: '$FUNCNAME()' requires an argument."
-        echo >&2 "Usage: $FUNCNAME VAR_NAME(str)"
-        return 1
-    fi
-    local var_ref=$1                    # assign the name of a variable
-    if [[ -z "${!var_ref:+1}" ]]; then  # dereference to get value
-        cat <<-__EOF__ >&2
-			Error: The '\$$var_ref' environment variable is not set.
-			  It probably got unset at some point. If you exported a custom
-			  value, try exporting it again and then sourcing 'shmark.sh'
-			  to reset it. Otherwise, just source 'shmark.sh' again.
-		__EOF__
-        return 1
-    fi
-    return 0
-}
-
-##
-# Substitute home directory path for tilde in bookmarks path.
-#
-# The HOME directory is substituted for a tilde when this file is first
-# sourced, but if a new bookmarks path is exported and this file isn't sourced
-# again, then the tilde will need to be expanded by each function.
-#
-__shmark_set_absolute_bookmark_path() {
-    [[ ${SHMARK_FILE:0:1} == '~' ]] \
-        && SHMARK_FILE="${SHMARK_FILE/#~/$HOME}"
 }
 
