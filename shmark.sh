@@ -80,13 +80,13 @@ SHMARK_FILE="${SHMARK_FILE/#~/$HOME}"
 # they are set before this functions file is sourced. If you change any of
 # them after sourcing this file, then source the file again.
 #
-# The default action is used if shmark() is run without any action.
+# The default action is used if shmark() is run without any args.
 : ${SHMARK_DEFAULT_ACTION:=}
 #
 # The default category is used for any bookmarks that don't have a category.
-# Note that this value is never written to the bookmarks file. If you change
-# the value of this environment variable, that value will be used whenever
-# uncategorized bookmarks are listed.
+# This value is never written to the bookmarks file. If you change the value of
+# this environment variable, that value will be used whenever uncategorized
+# bookmarks are listed.
 : ${SHMARK_DEFAULT_CATEGORY:=MISCELLANEOUS}
 
 #echo "DEBUG: $SHMARK_FILE  (exiting early...)"; return 1
@@ -652,14 +652,6 @@ _shmark_insert() {
     local category=$(awk -F\| 'NR=='$line_num' {print $1}' "$SHMARK_FILE")
     local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
 
-    #printf >&2 "DEBUG: ${FUNCNAME}(): %s\n" \
-    #    "line_total = $line_total" \
-    #    "list_pos   = $list_pos" \
-    #    "line_num   = $line_num" \
-    #    "category   = $category" \
-    #    "curdir     = $curdir"
-    #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
-
     # If there is already an existing bookmark for the current directory,
     # find its line number before deleting it.
     local cur_line_num=$(__shmark_get_line_number "$curdir")
@@ -690,18 +682,8 @@ _shmark_insert() {
         bookmark="$category|$curdir|$curdate|$curdate"
     fi
 
-    #printf >&2 "DEBUG: ${FUNCNAME}(): %s\n" \
-    #    "line_total = $line_total" \
-    #    "list_pos   = $list_pos" \
-    #    "line_num   = $line_num" \
-    #    "category   = $category" \
-    #    "curdir     = $curdir"
-
     # If we don't have an 'ed' command yet, that means we're inserting:
     [[ -z "$ed_cmd" ]] && ed_cmd="${line_num}i"
-
-    #echo >&2 "DEBUG: ${FUNCNAME}(): ed_cmd   = $ed_cmd"
-    #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
 
     printf '%s\n' "$ed_cmd" "$bookmark" . w | ed -s "$SHMARK_FILE"
     echo >&2 "Bookmark for '$curdir' inserted into bookmarks file."
@@ -772,16 +754,6 @@ _shmark_move() {
     # Update bookmark with new category:
     bookmark="${category}|${bookmark}"
 
-    #printf >&2 "DEBUG: ${FUNCNAME}(): %s\n" \
-    #    "line_total    = $line_total" \
-    #    "from_list_pos = $from_list_pos" \
-    #    "from_line_num = $from_line_num" \
-    #    "to_list_pos   = $to_list_pos" \
-    #    "to_line_num   = $to_line_num" \
-    #    "category      = $category" \
-    #    "directory     = $directory"
-    #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
-
     # Delete the old bookmark:
     local delete_msg="Old bookmark deleted."
     local should_report_failure=0  # set to 1 for debugging
@@ -796,22 +768,8 @@ _shmark_move() {
     # position, then decrement the target postion:
     (( from_list_pos < to_list_pos )) && (( to_list_pos-- ))
 
-    #printf >&2 "DEBUG: ${FUNCNAME}(): %s\n" \
-    #    "line_total    = $line_total" \
-    #    "from_list_pos = $from_list_pos" \
-    #    "from_line_num = $from_line_num" \
-    #    "to_list_pos   = $to_list_pos" \
-    #    "to_line_num   = $to_line_num" \
-    #    "category      = $category" \
-    #    "directory     = $directory"
-    #echo >&2 "$bookmark"
-    #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
-
     # If we don't have an 'ed' command yet, that means we're inserting:
     [[ -z "$ed_cmd" ]] && ed_cmd="${to_line_num}i"
-
-    #echo >&2 "DEBUG: ${FUNCNAME}(): ed_cmd   = $ed_cmd"
-    #echo >&2 "DEBUG: ${FUNCNAME}(): exiting early..."; return 1
 
     printf '%s\n' "$ed_cmd" "$bookmark" . w | ed -s "$SHMARK_FILE"
     echo >&2 "Bookmark for '$directory' moved."
