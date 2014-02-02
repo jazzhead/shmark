@@ -1,0 +1,22 @@
+@CURRENT
+   1) ~/Desktop/test.noindex/foo
+   2) ~/Desktop/test.noindex/quux
+@NEXT
+   3) ~/Desktop/test.noindex/grault
+   4) ~/Desktop/test.noindex/bar
+   5) ~/Desktop/test.noindex/qux
+@PENDING
+   6) ~/Desktop/test.noindex/corge
+   7) ~/Desktop/test.noindex/baz/a/really/long/path/almost/too/long/but/
+      necessary/in/this/case/for/demonstration/purposes/to/show/line/wrapping/
+      in/list/view
+   8) ~/Desktop/test.noindex/garply
+@SOMEDAY
+   9) ~/Desktop/test.noindex/foo/baz/a/really/long/path/almost/too/long/but/
+      necessary/in/this/case/for/demonstration/purposes/to/show/line/wrapping/
+      in/list/view
+  10) ~/Desktop/test.noindex/foo/qux/a/really/long/path/almost/too/long/but/
+      necessary/in/this/case/for/demonstration/purposes/to/show/line/wrapping/
+      in/list/view
+  11) ~/Desktop/test.noindex/foo/quux
+  12) ~/Desktop/test.noindex/foo/bar

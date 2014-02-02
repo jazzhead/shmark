@@ -1,2 +1,9 @@
 # Any directory that begins with an underscore
 _*/
+
+# Temporary test directory
+/t/tmp
+
+# Third-party libraries
+/t/lib/vendor/*
+!/t/lib/vendor/.gitignore

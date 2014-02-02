@@ -1,0 +1,16 @@
+@CURRENT
+   1) ~/Desktop/test.noindex/foo
+   2) ~/Desktop/test.noindex/quux
+@NEXT
+   3) ~/Desktop/test.noindex/grault
+   4) ~/Desktop/test.noindex/qux
+   5) ~/Desktop/test.noindex/bar
+@PENDING
+   6) ~/Desktop/test.noindex/corge
+   7) ~/Desktop/test.noindex/baz
+MISCELLANEOUS
+   8) ~/Desktop/test.noindex/garply
+   9) ~/Desktop/test.noindex/foo/baz
+  10) ~/Desktop/test.noindex/foo/qux
+  11) ~/Desktop/test.noindex/foo/quux
+  12) ~/Desktop/test.noindex/foo/bar
