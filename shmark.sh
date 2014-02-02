@@ -413,7 +413,7 @@ shmark() {
         chcat|cc        ) shift; _shmark_chcat  "$@" ;;
         list|ls         ) _shmark_list               ;;
         listall|lsa     ) _shmark_listall            ;;
-        listcat|lsc     ) _shmark_list_categories    ;;
+        listcat|lsc     ) _shmark_listcat            ;;
         listdir|lsd     ) _shmark_listdir            ;;
         listunsort|lsus ) _shmark_listunsort         ;;
         print           ) _shmark_print              ;;
@@ -832,7 +832,7 @@ _shmark_list() {
         [ $dir_only -eq 1 ] || echo "$category"
         __shmark_format_list_items $dir_only $i "$category"
         i=$((i + n))
-    done <<< "$(_shmark_list_categories)"
+    done <<< "$(_shmark_listcat)"
 
     # Now add any uncategorized bookmarks using a default category
     if [ $missing_category -eq 1 ]; then
@@ -844,7 +844,7 @@ _shmark_list() {
     fi
 }
 
-_shmark_list_categories() {
+_shmark_listcat() {
     __shmark_setup_envvars || return 1
 
     local include_blank_categories=${include_blank_categories=-0}
