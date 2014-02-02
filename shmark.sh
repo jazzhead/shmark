@@ -325,13 +325,13 @@ ___EndVersion___
 #
 # @param $1 (string)  Option or command (action)
 # @param $2 (str|int) Category, bookmark or list position depending on command
-# @param $3 (str|int) The 'chcat' command takes a bookmark or list position arg
+# @param $3 (str|int) 'chcat' and 'move' take an additional argument
 # @return   Exit status: 0=true, >0=false
 shmark() {
     #echo >&2 "DEBUG: ${FUNCNAME}(): running..."
 
     # Process options
-    while [[ $# -gt 0 ]]; do
+    while [ $# -gt 0 ]; do
         case "$1" in
             -[1-9]*)
                 if [[ "$1" =~ ^-[1-9][0-9]*$ ]]; then
@@ -461,7 +461,7 @@ shmark() {
 _shmark_cd() {
     __shmark_setup_envvars || return 1
 
-    if [[ $# -eq 0 ]]; then
+    if [ $# -eq 0 ]; then
         echo >&2 "Error: The 'cd' action requires an argument."
         _shmark_usage
         return $?
@@ -581,7 +581,7 @@ _shmark_insert() {
 
     # If the list position number is greater than the bookmark total, that
     # means append the new bookmark as the very last bookmark.
-    if [[ $list_pos -gt $line_total ]]; then
+    if [ $list_pos -gt $line_total ]; then
         # Need the list position for the current last bookmark so we can look
         # up its actual line number and then find out what its category is.
         list_pos=$line_total
@@ -655,7 +655,7 @@ _shmark_move() {
         "       target postion; otherwise, use a number 1-${line_total}."
     )
 
-    if [[ $# -ne 2 ]]; then
+    if [ $# -ne 2 ]; then
         echo >&2 "$errmsg"
         _shmark_usage
         return $?
@@ -672,7 +672,7 @@ _shmark_move() {
 
     # If the target list position number is greater than the bookmark total,
     # that means append the new bookmark as the very last bookmark.
-    if [[ $to_list_pos -gt $line_total ]]; then
+    if [ $to_list_pos -gt $line_total ]; then
         # Need the list position for the current last bookmark so we can look
         # up its actual line number and then find out what its category is.
         to_list_pos=$line_total
@@ -732,7 +732,7 @@ _shmark_move() {
 _shmark_delete() {
     __shmark_setup_envvars || return 1
 
-    if [[ $# -eq 0 ]]; then
+    if [ $# -eq 0 ]; then
         echo >&2 "Error: The 'delete' action requires an argument."
         _shmark_usage
         return $?
@@ -745,7 +745,7 @@ _shmark_delete() {
     if [[ "$line_num" =~ ^[1-9][0-9]*$ ]]; then
         cp -p ${SHMARK_FILE}{,.bak}
         bookmark=$(sed $line_num'q;d' "$SHMARK_FILE") # get existing bookmark
-        if [[ $(wc -l < "$SHMARK_FILE") -eq 1 ]]; then
+        if [ $(wc -l < "$SHMARK_FILE") -eq 1 ]; then
             # 'ed' seemingly can't delete all lines from a file, so just
             # redirect nothing to overwrite the file contents if there is only
             # one line remaining:
@@ -757,7 +757,7 @@ _shmark_delete() {
         echo "$bookmark"        # old bookmark to STDOUT for capturing
         return 0
     else
-        if [[ "$should_report_failure" -eq 1 ]]; then   # direct 'delete' call
+        if [ "$should_report_failure" -eq 1 ]; then   # direct 'delete' call
             echo >&2 "Error: Couldn't find line to delete for '$1'"
         else               # called from 'add' or 'insert' function, so backup
             cp -p ${SHMARK_FILE}{,.bak}
@@ -775,7 +775,7 @@ _shmark_delete() {
 _shmark_chcat() {
     __shmark_setup_envvars || return 1
 
-    if [[ $# -ne 2 ]]; then
+    if [ $# -ne 2 ]; then
         echo >&2 "Error: The 'chcat' action requires two arguments."
         _shmark_usage
         return $?
@@ -829,16 +829,16 @@ _shmark_list() {
         fi
         escaped_category=$(sed -E 's/[]\.*+?$|(){}[^-]/\\&/g' <<< "$category")
         n=$(grep -c "^$escaped_category" "$SHMARK_FILE")
-        [[ $dir_only -eq 1 ]] || echo "$category"
+        [ $dir_only -eq 1 ] || echo "$category"
         __shmark_format_list_items $dir_only $i "$category"
         i=$((i + n))
     done <<< "$(_shmark_list_categories)"
 
     # Now add any uncategorized bookmarks using a default category
-    if [[ $missing_category -eq 1 ]]; then
-        if [[ $listall -eq 1 || $dir_only -eq 1 ]]; then
+    if [ $missing_category -eq 1 ]; then
+        if [ $listall -eq 1 ] || [ $dir_only -eq 1 ]; then
             category=""
-            [[ $dir_only -eq 1 ]] || echo "$SHMARK_DEFAULT_CATEGORY"
+            [ $dir_only -eq 1 ] || echo "$SHMARK_DEFAULT_CATEGORY"
             __shmark_format_list_items $dir_only $i "$category"
         fi
     fi
@@ -849,7 +849,7 @@ _shmark_list_categories() {
 
     local include_blank_categories=${include_blank_categories=-0}
     local categories=$(cut -d\| -f1 "$SHMARK_FILE" | sort -u)
-    if [[ "$include_blank_categories" -eq 1 ]]; then
+    if [ "$include_blank_categories" -eq 1 ]; then
         echo "$categories"
     else
         grep -v '^$' <<< "$categories"
@@ -1016,7 +1016,7 @@ __shmark_prepare_new_bookmark() {
 # @param $3 (string)  Bookmark category
 # @return   (string)  Formatted list items
 __shmark_format_list_items() {
-    if [[ $# -ne 3 ]]; then
+    if [ $# -ne 3 ]; then
         echo >&2 "Error: '$FUNCNAME()' requires three arguments."
         echo >&2 "Usage: $FUNCNAME DIR_ONLY(int) IDX(int) CATEGORY(str)"
         return 1
@@ -1029,7 +1029,7 @@ __shmark_format_list_items() {
     # Find lines with matching category:
     result=$(sed -n "s!^$category\|\([^|]*\)\|.*!\1!p" "$SHMARK_FILE")
 
-    if [[ $dir_only -eq 1 ]]; then
+    if [ $dir_only -eq 1 ]; then
         echo "$result"
     else
         # Get the number of digits in the last line number:
@@ -1055,7 +1055,7 @@ __shmark_format_list_items() {
 # @param $4 (string)  The line to wrap
 # @return   (string)  Wrapped line
 __shmark_wrap_long_line() {
-    if [[ $# -ne 4 ]]; then
+    if [ $# -ne 4 ]; then
         echo >&2 "Error: '$FUNCNAME()' requires four arguments."
         echo >&2 \
             "Usage: $FUNCNAME WIDTH(int) DELIMITER(char) INDENT(str) LINE(str)"
@@ -1069,20 +1069,20 @@ __shmark_wrap_long_line() {
     local idx=0
     local segments item tmp final_text
 
-    if [[ ${#delim} -ne 1 ]]; then
+    if [ ${#delim} -ne 1 ]; then
         echo >&2 "Error: $FUNCNAME(): DELIMITER must be a single character."
         echo >&2 \
             "Usage: $FUNCNAME WIDTH(int) DELIMITER(char) INDENT(str) LINE(str)"
         return 1
     fi
 
-    if [[ ${#line} -gt $width ]]; then
+    if [ ${#line} -gt $width ]; then
         while IFS=$delim read -ra segments; do
             for item in "${segments[@]}"; do
                 if [[ -n "${wrapped_lines[$idx]}" ]]; then
                     # Line is not empty, so append the next segment:
                     tmp="${wrapped_lines[$idx]}${delim}${item}"
-                    if [[ ${#tmp} -lt $width ]]; then
+                    if [ ${#tmp} -lt $width ]; then
                         # If the width of the new line is still less than the
                         # max, replace the existing line with the new line:
                         wrapped_lines[$idx]="$tmp"
@@ -1115,7 +1115,7 @@ __shmark_wrap_long_line() {
 # @param  (integer) List position
 # @return (string)  Bookmarked directory path at given list position
 __shmark_get_directory_from_list_index() {
-    if [[ $# -ne 1 ]]; then
+    if [ $# -ne 1 ]; then
         echo >&2 "Error: '$FUNCNAME()' requires an integer argument."
         echo >&2 "Usage: $FUNCNAME INTEGER"
         return 1
@@ -1133,7 +1133,7 @@ __shmark_get_directory_from_list_index() {
 # @param  (string) Bookmarked directory path
 # @return (integer) List position of given bookmarked directory
 __shmark_get_list_index_from_directory() {
-    if [[ $# -ne 1 ]]; then
+    if [ $# -ne 1 ]; then
         echo >&2 "Error: '$FUNCNAME()' requires an argument."
         echo >&2 "Usage: $FUNCNAME DIRECTORY_PATH(str)"
         return 1
@@ -1145,7 +1145,7 @@ __shmark_get_list_index_from_directory() {
 # @param  (str|int) Directory path or its list position
 # @return (integer) Line number in bookmarks file for given directory
 __shmark_get_line_number() {
-    if [[ $# -ne 1 ]]; then
+    if [ $# -ne 1 ]; then
         echo >&2 "Error: '$FUNCNAME()' requires an argument."
         echo >&2 "Usage: $FUNCNAME DIRECTORY_PATH|LIST_POSITION"
         return 1
@@ -1164,7 +1164,7 @@ __shmark_get_line_number() {
 # @param $2 (string)  Error message
 # @return   Exit status: 0=true, >0=false
 __shmark_validate_num() {
-    if [[ $# -ne 2 ]]; then
+    if [ $# -ne 2 ]; then
         echo >&2 "Error: '$FUNCNAME()' requires two arguments."
         echo >&2 "Usage: $FUNCNAME NUM(int) ERROR_MESSAGE(str)"
         return 1
@@ -1185,7 +1185,7 @@ __shmark_validate_num() {
 # @param  (string) A directory bookmark line (pipe-delimited, four fields)
 # @return (string) Updated bookmark with current date for last field
 __shmark_update_last_visited() {
-    if [[ $# -ne 1 ]]; then
+    if [ $# -ne 1 ]; then
         echo >&2 "Error: '$FUNCNAME()' requires an argument."
         echo >&2 "Usage: $FUNCNAME BOOKMARK_LINE(str)"
         return 1
@@ -1200,7 +1200,7 @@ __shmark_update_last_visited() {
 # @param $2 (string) New category
 # @return   (string) Updated bookmark with new category as first field
 __shmark_update_category() {
-    if [[ $# -ne 2 ]]; then
+    if [ $# -ne 2 ]; then
         echo >&2 "Error: '$FUNCNAME()' requires two arguments."
         echo >&2 "Usage: $FUNCNAME BOOKMARK_LINE(str) CATEGORY(str)"
         return 1
@@ -1217,7 +1217,7 @@ __shmark_update_category() {
 # @param $1 (integer) Line number from bookmarks file
 # @param $2 (string)  The replacement text (a formatted directory bookmark)
 __shmark_replace_line() { # void
-    if [[ $# -ne 2 ]]; then
+    if [ $# -ne 2 ]; then
         echo >&2 "Error: '$FUNCNAME()' requires two arguments."
         echo >&2 "Usage: $FUNCNAME LINE_NUM(int) BOOKMARK_LINE(str)"
         return 1
