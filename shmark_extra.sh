@@ -9,20 +9,20 @@
 # @author  Steve Wheeler
 #
 # Completions will need to be defined for these as well. Completions are
-# already defined for these two examples in the 'shmark_completion_extra.sh'
+# already defined for these two examples in the 'shmark_extra_completion.sh'
 # file.
 #
 # To use, source this file after sourcing shmark.sh. To enable completions,
 # after sourcing this file, source shmark_completion.sh and
-# shmark_completion_extra.sh. Both the shmark_extra.sh and
-# shmark_completion_extra.sh files were split into separate files so that
+# shmark_extra_completion.sh. Both the shmark_extra.sh and
+# shmark_extra_completion.sh files were split into separate files so that
 # they could be easily customized or replaced without affecting the main
 # shmark.sh and shmark_completion.sh files.
 #
 # Instead of using this file, you could just define your own aliases in your
 # .bash_profile or .bashrc file, or in another file like this that you source.
 # Completions will need to be defined for any of your custom aliases. See the
-# shmark_completion_extra.sh file for examples.
+# shmark_extra_completion.sh file for examples.
 #
 ##############################################################################
 

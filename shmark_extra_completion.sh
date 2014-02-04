@@ -13,7 +13,7 @@
 #
 # To use, source this file after sourcing shmark.sh, shmark_extra.sh and
 # shmark_completion.sh. Or, you can write your own custom completions and
-# aliases. Both the shmark_extra.sh and shmark_completion_extra.sh files
+# aliases. Both the shmark_extra.sh and shmark_extra_completion.sh files
 # were split into separate files so that they could be easily customized or
 # replaced without affecting the main shmark.sh and shmark_completion.sh
 # files.
