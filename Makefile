@@ -2,6 +2,7 @@
 #
 # Makefile for shmark
 #
+# @date    2014-02-05 Last modified
 # @date    2014-02-04 First version
 # @author  Steve Wheeler
 #
@@ -23,107 +24,121 @@ VERSION = $(subst v,,$(shell git describe --match "v[0-9]*" --dirty --always))
 endif
 
 
-INSTALL     = install
+# Locations
+PREFIX      := $(HOME)
+FUNC_DIR    := $(PREFIX)/.bash_functions.d
+COMP_DIR    := $(PREFIX)/.bash_completion.d
+BUILD       := _build
+FUNC_BUILD  := $(BUILD)/functions
+COMP_BUILD  := $(BUILD)/completion
 
-PREFIX     := $(HOME)
-BUILD       = _build
-INSTOPTS    = -pSv
-INSTMODE    = -m 0600
-INSTDIRMODE = -m 0700
+# Tools
+RM          := rm -rfv
+CP          := cp -p
+SED         := LANG=C sed
+MKDIR       := mkdir -pvm0700
+PROVE       := prove -f
 
-# Source files:
-SRC_MAIN         = shmark.sh
-SRC_EXTRA        = shmark_extra.sh
-#
+# Install tool and options
+INSTALL     := install
+INSTOPTS    := -pSv
+INSTMODE    := -m 0600
+INSTDIRMODE := -m 0700
+
+# Source files
+SRC_MAIN    := shmark.sh
+SRC_EXTRA   := shmark_extra.sh
+
 # (NOTE: These source completion file names are just used in the help
 # text. The target rules compute the names as needed because the actual
 # target names are the same as the function names.)
 SRC_COMP        := $(subst .sh,_completion.sh,$(SRC_MAIN))
 SRC_COMP_EXTRA  := $(subst .sh,_completion.sh,$(SRC_EXTRA))
 
-# Build directories:
-BUILD_FUNC      := $(BUILD)/functions
-BUILD_COMP      := $(BUILD)/completion
-# Build targets:
-TARGET_FUNC     := $(addprefix $(BUILD_FUNC)/,$(SRC_MAIN) $(SRC_EXTRA))
-TARGET_COMP     := $(addprefix $(BUILD_COMP)/,$(SRC_MAIN) $(SRC_EXTRA))
+# Build targets
+TARGET_FUNC     := $(addprefix $(FUNC_BUILD)/,$(SRC_MAIN) $(SRC_EXTRA))
+TARGET_COMP     := $(addprefix $(COMP_BUILD)/,$(SRC_MAIN) $(SRC_EXTRA))
 
-# Install directories:
-INSTDIR_FUNC    := $(PREFIX)/.bash_functions.d
-INSTDIR_COMP    := $(PREFIX)/.bash_completion.d
-# Install targets:
+# Install targets
 #   by directory:
-FUNC_INSTALL    := $(addprefix $(INSTDIR_FUNC)/,$(SRC_MAIN) $(SRC_EXTRA))
-COMP_INSTALL    := $(addprefix $(INSTDIR_COMP)/,$(SRC_MAIN) $(SRC_EXTRA))
-#   for targets:
-INSTALL_ALL     := $(FUNC_INSTALL) $(COMP_INSTALL)
-INSTALL_DEFAULT := $(filter-out %_extra.sh,$(INSTALL_ALL))
-INSTALL_MIN     := $(filter-out %_extra.sh,$(FUNC_INSTALL))
+FUNC_INSTALL_FILES    := $(addprefix $(FUNC_DIR)/,$(SRC_MAIN) $(SRC_EXTRA))
+COMP_INSTALL_FILES    := $(addprefix $(COMP_DIR)/,$(SRC_MAIN) $(SRC_EXTRA))
+#   by rule:
+ALL_INSTALL_FILES     := $(FUNC_INSTALL_FILES) $(COMP_INSTALL_FILES)
+DEFAULT_INSTALL_FILES := $(filter-out %_extra.sh,$(ALL_INSTALL_FILES))
+MIN_INSTALL_FILES     := $(filter-out %_extra.sh,$(FUNC_INSTALL_FILES))
 
 
-# ==== PHONY TARGETS =========================================================
+# ==== TARGETS ===============================================================
 
 all: $(TARGET_FUNC) $(TARGET_COMP)
 	@echo "--->  ** Build complete"
 
-install: all $(INSTALL_DEFAULT)
-	@echo "--->  ** Install complete"
+install: all $(DEFAULT_INSTALL_FILES)
+	@echo "--->  ** Installation complete"
 	@echo "$$POST_INSTALL_TEXT"
 
-install-min: all $(INSTALL_MIN)
-	@echo "--->  ** Install complete"
+install-min: all $(MIN_INSTALL_FILES)
+	@echo "--->  ** Installation complete"
 	@echo "$$POST_INSTALL_TEXT"
 
-install-all: all $(INSTALL_ALL)
-	@echo "--->  ** Install complete"
+install-all: all $(ALL_INSTALL_FILES)
+	@echo "--->  ** Installation complete"
 	@echo "$$POST_INSTALL_TEXT"
 
 help:
 	@echo "$$HELPTEXT"
 
 test:
+	@echo "--->  ** Running shmark tests..."
+	@echo "--->  (Source files tested because build files are almost identical)"
 	@if [ -f t/lib/vendor/tap-functions.sh ]; then \
-		prove -f ./t/[0-9][0-9][0-9][0-9]-*.sh; \
+		$(PROVE) ./t/[0-9][0-9][0-9][0-9]-*.sh; \
 	else \
 		echo "The tests require a third-party library to be downloaded and"; \
 		echo "placed in the 't/lib/vendor' directory. Download the file from:"; \
 		echo "http://svn.solucorp.qc.ca/repos/solucorp/JTap/trunk/tap-functions"; \
 	fi
+	@echo "--->  ** Testing complete"
+
+check: test
 
 clean:
-	@rm -vr $(BUILD)
-	@echo "--->  Deleted $(BUILD) directory"
+	@echo "--->  ** Deleting '$(BUILD)' directory..."
+	@$(RM) $(BUILD)
+	@echo "--->  ** Deletion complete"
 
 uninstall:
-	@echo "--->  Uninstalling shmark files..."
-	@-rm -v $(INSTALL_ALL) 2>/dev/null || true  # ignore missing file errors
+	@echo "--->  ** Uninstalling shmark files..."
+	@-$(RM) $(ALL_INSTALL_FILES) 2>/dev/null || true # ignore missing file error
+	@echo "--->  ** Uninstall complete"
 
-.PHONY: all test help clean uninstall install install-all install-min
+.PHONY: all test check help clean uninstall install install-all install-min
 
 
-# ==== FILE TARGETS ==========================================================
+# ==== DEPENDENCIES ==========================================================
 
 # Static Pattern Rule Syntax:
 #     targets ...: target-pattern: prereq-patterns ...
 #         recipe
 
-# ---- Build targets
-
-$(TARGET_FUNC): $(BUILD_FUNC)/%: %
+# Build function files
+$(TARGET_FUNC): $(FUNC_BUILD)/%: %
 	$(call build-file,$(@D),$<,$@)
 
-# Completion source files will be renamed to be the same as the function files,
-# but in a separate build directory:
-$(TARGET_COMP): $(BUILD_COMP)/%.sh: %_completion.sh
+# Build completion files
+#   (Completion source files will be renamed to be the same as the function
+#   files, but in a separate build directory.)
+$(TARGET_COMP): $(COMP_BUILD)/%.sh: %_completion.sh
 	$(call build-file,$(@D),$<,$@)
 
-# ---- Install targets
+# Install function files
+$(FUNC_INSTALL_FILES): $(FUNC_DIR)/%: %
+	$(call install-file,$(@D),$(FUNC_BUILD)/$<)
 
-$(FUNC_INSTALL): $(INSTDIR_FUNC)/%: %
-	$(call install-file,$(@D),$(BUILD_FUNC)/$<)
-
-$(COMP_INSTALL): $(INSTDIR_COMP)/%: %
-	$(call install-file,$(@D),$(BUILD_COMP)/$<)
+# Install completion files
+$(COMP_INSTALL_FILES): $(COMP_DIR)/%: %
+	$(call install-file,$(@D),$(COMP_BUILD)/$<)
 
 
 # ==== FUNCTIONS =============================================================
@@ -138,19 +153,19 @@ define build-file
 	@#echo "--->  Building '$2' as '$3'"
 	@[ -d "$1" ] || { \
 		echo "--->  Creating directory \"$1\"..."; \
-		mkdir -pvm0700 $1; \
+		$(MKDIR) $1; \
 	}
 	@if [ 0 = $$(grep -cm1 '@@VERSION@@' "$2") ]; then \
 		echo "--->  Copying $2 to $3..."; \
-		cp -p "$2" "$3"; \
+		$(CP) "$2" "$3"; \
 	else \
 		echo "--->  Processing $2 to insert VERSION into $3..."; \
-		LANG=C sed -e 's/@@VERSION@@/$(VERSION)/g' < "$2" > "$3"; \
+		$(SED) -e 's/@@VERSION@@/$(VERSION)/g' < "$2" > "$3"; \
 	fi
 endef
 
 
-# ==== MULTILINE TEXT VARIABLES ==============================================
+# ==== TEXT VARIABLES ========================================================
 
 define HELPTEXT
 
@@ -194,11 +209,11 @@ Installation Notes
 
 Function (and alias) files will be installed in:
 
-    $(subst $(HOME),~,$(INSTDIR_FUNC))
+    $(subst $(HOME),~,$(FUNC_DIR))
 
 Completion files will be installed in:
     
-    $(subst $(HOME),~,$(INSTDIR_COMP))
+    $(subst $(HOME),~,$(COMP_DIR))
 
 The files in those directories need to loaded into your shell
 environment by sourcing them from your ~/.bash_profile or ~/.bashrc.
@@ -221,16 +236,16 @@ the files by adding the following to your ~/.bash_profile or ~/.bashrc
 file:
 
     # Enable custom Bash functions:
-    if [ -d $(subst $(HOME),~,$(INSTDIR_FUNC)) ]; then
-        for f in $(subst $(HOME),~,$(INSTDIR_FUNC))/*.sh; do
+    if [ -d $(subst $(HOME),~,$(FUNC_DIR)) ]; then
+        for f in $(subst $(HOME),~,$(FUNC_DIR))/*.sh; do
             . "$$f"
         done
         unset f
     fi
 
     # Enable custom Bash completions:
-    if [ -d $(subst $(HOME),~,$(INSTDIR_COMP)) ]; then
-        for f in $(subst $(HOME),~,$(INSTDIR_COMP))/*.sh; do
+    if [ -d $(subst $(HOME),~,$(COMP_DIR)) ]; then
+        for f in $(subst $(HOME),~,$(COMP_DIR))/*.sh; do
             . "$$f"
         done
         unset f
@@ -239,11 +254,11 @@ file:
 If you only have single files to enable, you can could still use code
 like the above, or you could instead use lines such as:
 
-    . $(subst $(HOME),$$HOME,$(INSTDIR_FUNC))/shmark.sh
+    . $(subst $(HOME),$$HOME,$(FUNC_DIR))/shmark.sh
 
 And:
 
-    . $(subst $(HOME),$$HOME,$(INSTDIR_COMP))/shmark.sh
+    . $(subst $(HOME),$$HOME,$(COMP_DIR))/shmark.sh
 
 endef
 export POST_INSTALL_TEXT
