@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2014-02-01 Last modified
+# @date    2014-02-06 Last modified
 # @date    2014-01-18 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -178,13 +178,16 @@ _shmark_actions_help() {
         in its category. All bookmarks are grouped by category in the
         output of the 'list' and 'listall' commands.
 
-    cd|go BOOKMARK
-    cd|go NUMBER
+    cd|go [BOOKMARK]
+    cd|go [NUMBER]
         Go (cd) to the specified directory BOOKMARK. The bookmarked
         directory can be specified by its full path (available with tab
         completion from a partially typed path) or by specifying the
         bookmark's list position NUMBER. The list position can be found
         using the 'list' or 'listall' actions.
+
+        If a BOOKMARK or NUMBER argument is omitted, shmark will go to
+        the first listed bookmark (position #1) by default.
 
         A shortcut to go to a bookmark by its list position is to just
         prefix the list position NUMBER with a hyphen without using the
@@ -461,16 +464,13 @@ shmark() {
 _shmark_cd() {
     __shmark_setup_envvars || return 1
 
-    if [ $# -eq 0 ]; then
-        echo >&2 "Error: The 'cd' action requires an argument."
-        _shmark_usage
-        return $?
-    fi
-
     local dir absolute_path line_num bookmark
 
     # Get bookmark directory path (for searching bookmarks file):
-    if [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
+    if [ $# -eq 0 ]; then
+        # Default to first bookmark if no arg
+        dir="$(__shmark_get_directory_from_list_index 1)"
+    elif [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
         dir="$(__shmark_get_directory_from_list_index $1)"
     else
         dir="${1/#$HOME/~}" # HOME is replaced with tilde in bookmarks file
