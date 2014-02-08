@@ -6,6 +6,10 @@ set -o pipefail # Return non-zero status if any piped commands fail
 #
 # Tests for shmark
 #
+# @date    2014-02-08 Last modified
+# @date    2014-01-26 First version
+# @author  Steve Wheeler
+#
 # To run all tests, from the main project directory (not this 't' test
 # directory), run:
 #
@@ -19,8 +23,6 @@ set -o pipefail # Return non-zero status if any piped commands fail
 #
 #     bash t/<test_name>.sh
 #
-# @date    2014-01-26 First version
-# @author  Steve Wheeler
 ##############################################################################
 
 # === SETUP ===
@@ -47,7 +49,7 @@ unset ${!SHMARK_@}
 
 # === MAIN ===
 
-plan_tests 3
+plan_tests 4
 
 SAMPLE_FILE='data/bookmarks-05.txt'
 
@@ -70,7 +72,8 @@ isnt "$retval" 0 "'shmark cd' - should error for non-existent directory"
 
 shmark -f "$TMPFILE" cd >/dev/null 2>&1
 retval=$?
-isnt "$retval" 0 "'shmark cd' - should error for missing argument"
+is "$retval" 0 "'shmark cd' - no arg goes to first bookmark"
+is "$PWD" "${PROGDIR}/tmp/foo/bar" "'shmark cd' - no arg goes to first bookmark"
 [ $retval -eq 0 ] && cd - > /dev/null
 
 # === END ===

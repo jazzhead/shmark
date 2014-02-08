@@ -1,12 +1,12 @@
 ~/Desktop/test.noindex/foo
 ~/Desktop/test.noindex/quux
 ~/Desktop/test.noindex/grault
-~/Desktop/test.noindex/qux
 ~/Desktop/test.noindex/bar
+~/Desktop/test.noindex/qux
 ~/Desktop/test.noindex/corge
-~/Desktop/test.noindex/baz
+~/Desktop/test.noindex/baz/a/really/long/path/almost/too/long/but/necessary/in/this/case/for/demonstration/purposes/to/show/line/wrapping/in/list/view
 ~/Desktop/test.noindex/garply
-~/Desktop/test.noindex/foo/baz
-~/Desktop/test.noindex/foo/qux
+~/Desktop/test.noindex/foo/baz/a/really/long/path/almost/too/long/but/necessary/in/this/case/for/demonstration/purposes/to/show/line/wrapping/in/list/view
+~/Desktop/test.noindex/foo/qux/a/really/long/path/almost/too/long/but/necessary/in/this/case/for/demonstration/purposes/to/show/line/wrapping/in/list/view
 ~/Desktop/test.noindex/foo/quux
 ~/Desktop/test.noindex/foo/bar

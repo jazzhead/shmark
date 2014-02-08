@@ -6,7 +6,7 @@ set -o pipefail # Return non-zero status if any piped commands fail
 #
 # Tests for shmark
 #
-# @date    2014-02-01 Last modified
+# @date    2014-02-08 Last modified
 # @date    2014-01-23 First version
 # @author  Steve Wheeler
 #
@@ -48,7 +48,8 @@ unset ${!SHMARK_@}
 plan_tests 1
 
 EXPECTED=$(cat "data/expected/${PROGNAME}.txt")
-RESULT=$(shmark -f "data/bookmarks-02.txt" listdir)
+# Use a sample file with long lines to make sure they don't wrap:
+RESULT=$(shmark -f "data/bookmarks-04.txt" listdir)
 while IFS= read -r line; do
     diag "$line"
 done <<< "$RESULT"
