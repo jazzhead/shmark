@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2014-02-06 Last modified
+# @date    2014-02-07 Last modified
 # @date    2014-01-18 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -237,7 +237,7 @@ _shmark_actions_help() {
         can append to specific categories rather than only the last
         listed category.
 
-    list|ls
+    list|ls [NUMBER]
         Show a list of saved bookmarks. Bookmarks are listed by category
         and are prefixed by their list index number. (Note that the list
         index number is not the same as the line number in the actual
@@ -246,7 +246,10 @@ _shmark_actions_help() {
         included in the list. Use 'listall' to see a list of all
         bookmarks including those that are uncategorized.
 
-    listall|lsa
+        Limit the number of bookmarks shown by supplying a NUMBER
+        argument indicating the maximum.
+
+    listall|lsa [NUMBER]
         Like 'list', but include uncategorized bookmarks. Uncategorized
         bookmarks are listed after all other categories using a default
         category, which is "MISCELLANEOUS" unless customized by setting
@@ -407,23 +410,23 @@ shmark() {
 
     # Process actions
     case "$action" in
-        cd|go           ) shift; _shmark_cd     "$@" ;;
-        add|a           ) shift; _shmark_add    "$@" ;;
-        append|app      ) shift; _shmark_append "$@" ;;
-        insert|ins      ) shift; _shmark_insert "$@" ;;
-        move|mv         ) shift; _shmark_move   "$@" ;;
-        del|rm          ) shift; _shmark_delete "$@" ;;
-        chcat|cc        ) shift; _shmark_chcat  "$@" ;;
-        list|ls         ) _shmark_list               ;;
-        listall|lsa     ) _shmark_listall            ;;
-        listcat|lsc     ) _shmark_listcat            ;;
-        listdir|lsd     ) _shmark_listdir            ;;
-        listunsort|lsus ) _shmark_listunsort         ;;
-        print           ) _shmark_print              ;;
-        undo            ) _shmark_undo               ;;
-        env             ) _shmark_env                ;;
-        edit|ed         ) _shmark_edit               ;;
-        shorthelp       ) _shmark_shorthelp          ;;
+        cd|go           ) shift; _shmark_cd      "$@" ;;
+        add|a           ) shift; _shmark_add     "$@" ;;
+        append|app      ) shift; _shmark_append  "$@" ;;
+        insert|ins      ) shift; _shmark_insert  "$@" ;;
+        move|mv         ) shift; _shmark_move    "$@" ;;
+        del|rm          ) shift; _shmark_delete  "$@" ;;
+        chcat|cc        ) shift; _shmark_chcat   "$@" ;;
+        list|ls         ) shift; _shmark_list    "$@" ;;
+        listall|lsa     ) shift; _shmark_listall "$@" ;;
+        listcat|lsc     ) _shmark_listcat             ;;
+        listdir|lsd     ) _shmark_listdir             ;;
+        listunsort|lsus ) _shmark_listunsort          ;;
+        print           ) _shmark_print               ;;
+        undo            ) _shmark_undo                ;;
+        env             ) _shmark_env                 ;;
+        edit|ed         ) _shmark_edit                ;;
+        shorthelp       ) _shmark_shorthelp           ;;
         help)
             # If STDOUT is to a terminal (TTY), then try to pipe
             # the output to the PAGER (less by default):
@@ -812,14 +815,21 @@ _shmark_list() {
     #unset SHMARK_DEFAULT_CATEGORY  # DEBUG 'set -o nounset (set -u)'
     __shmark_setup_envvars || return 1
 
-    local listall=${listall:-0}
-    local dir_only=${dir_only:-0}
+    local max=${1:-0}
+    local listall=${listall:-0}     # inherit from calling function
+    local dir_only=${dir_only:-0}   # inherit from calling function
     local i=1
-    local n category result escaped_category
+    local n category result escaped_category list_items
     local missing_category=0
     local include_blank_categories=1
 
     [[ -s "$SHMARK_FILE" ]] || return
+
+    if [[ ! "$max" =~ ^[0-9]+$ ]]; then
+        echo >&2 "Error: The 'list' action takes an optional integer argument."
+        _shmark_usage
+        return $?
+    fi
 
     while read -r category; do
         if [[ -z "$category" ]]; then
@@ -828,18 +838,22 @@ _shmark_list() {
             continue
         fi
         escaped_category=$(sed -E 's/[]\.*+?$|(){}[^-]/\\&/g' <<< "$category")
-        n=$(grep -c "^$escaped_category" "$SHMARK_FILE")
+        n=$(grep -c "^$escaped_category" "$SHMARK_FILE") # no. matching lines
         [ $dir_only -eq 1 ] || echo "$category"
-        __shmark_format_list_items $dir_only $i "$category"
-        i=$((i + n))
+        list_items=$(__shmark_format_list_items $dir_only $i "$category")
+        i=$(( i + n )) # the next list position
+        __shmark_wrap_list_items "$max" $i $n "$list_items" || return
     done <<< "$(_shmark_listcat)"
 
     # Now add any uncategorized bookmarks using a default category
     if [ $missing_category -eq 1 ]; then
         if [ $listall -eq 1 ] || [ $dir_only -eq 1 ]; then
             category=""
+            n=$(grep -c "^[|]" "$SHMARK_FILE") # no. matching lines
             [ $dir_only -eq 1 ] || echo "$SHMARK_DEFAULT_CATEGORY"
-            __shmark_format_list_items $dir_only $i "$category"
+            list_items=$(__shmark_format_list_items $dir_only $i "$category")
+            i=$(( i + n )) # the next list position
+            __shmark_wrap_list_items "$max" $i $n "$list_items" || return
         fi
     fi
 }
@@ -858,7 +872,7 @@ _shmark_listcat() {
 
 _shmark_listall() {
     local listall=1
-    _shmark_list
+    _shmark_list "$@"
 }
 
 _shmark_listdir() {
@@ -1024,7 +1038,7 @@ __shmark_format_list_items() {
     local dir_only=$1
     local idx=$2
     local category="$3"
-    local result width formatted line
+    local result width
 
     # Find lines with matching category:
     result=$(sed -n "s!^$category\|\([^|]*\)\|.*!\1!p" "$SHMARK_FILE")
@@ -1038,11 +1052,7 @@ __shmark_format_list_items() {
         # Indent list items two spaces:
         width=$(( width + 2 ))
         # Number the list items:
-        formatted=$(nl -w $width -s ') ' -v $idx <<< "$result")
-        # Wrap long lines:
-        while IFS= read -r line; do
-            __shmark_wrap_long_line 80 '/' "      " "$line"
-        done <<< "$formatted"
+        nl -w $width -s ') ' -v $idx <<< "$result"
     fi
 }
 
@@ -1109,6 +1119,42 @@ __shmark_wrap_long_line() {
         final_text="$line"
     fi
     echo "$final_text"
+}
+
+##
+# Wrap list items with an optional maximum number to output
+#
+# @param $1 (integer) Maximum list items
+# @param $2 (integer) Next list index
+# @param $3 (integer) Number of list items
+# @param $4 (string)  The list items to wrap
+# @return   (string)  Wrapped lines
+__shmark_wrap_list_items() {
+    if [ $# -ne 4 ]; then
+        echo >&2 "Error: '$FUNCNAME()' requires four arguments."
+        echo >&2 \
+            "Usage: $FUNCNAME MAX(int) INDEX(int) LINE_COUNT(int) ITEMS(str)"
+        return 1
+    fi
+    local max="$1"
+    local idx="$2"
+    local line_count="$3"
+    local list_items="$4"
+    local h line
+    if [ $max  -gt 0 ] && [ $idx -gt $max ]; then
+        h=$(( max - idx + 1 + line_count )) # number for 'head'
+        #echo >&2 "DEBUG: h = (max - i + 1 + n) = ($max - $i + 1 + $n) = $h"
+        while IFS= read -r line; do
+            __shmark_wrap_long_line 80 '/' "      " "$line"
+        done <<< "$(head -${h} <<< "$list_items")"
+        #echo >&2 "DEBUG: exiting..."
+        return 1 # not an error, but signal caller to exit
+    fi
+    #echo >&2 "DEBUG: --- list items ($n):"
+    while IFS= read -r line; do
+        __shmark_wrap_long_line 80 '/' "      " "$line"
+    done <<< "$list_items"
+    return 0
 }
 
 ##
