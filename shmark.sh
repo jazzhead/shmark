@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2014-02-07 Last modified
+# @date    2014-02-08 Last modified
 # @date    2014-01-18 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -847,7 +847,11 @@ _shmark_list() {
         [ $dir_only -eq 1 ] || echo "$category"
         list_items=$(__shmark_format_list_items $dir_only $i "$category")
         i=$(( i + n )) # the next list position
-        __shmark_wrap_list_items "$max" $i $n "$list_items" || return
+        if [ $dir_only -eq 0 ]; then
+            __shmark_wrap_list_items "$max" $i $n "$list_items" || return
+        else
+            echo "$list_items"
+        fi
     done <<< "$(_shmark_listcat)"
 
     # Now add any uncategorized bookmarks using a default category
@@ -858,7 +862,11 @@ _shmark_list() {
             [ $dir_only -eq 1 ] || echo "$SHMARK_DEFAULT_CATEGORY"
             list_items=$(__shmark_format_list_items $dir_only $i "$category")
             i=$(( i + n )) # the next list position
-            __shmark_wrap_list_items "$max" $i $n "$list_items" || return
+            if [ $dir_only -eq 0 ]; then
+                __shmark_wrap_list_items "$max" $i $n "$list_items" || return
+            else
+                echo "$list_items"
+            fi
         fi
     fi
 }
