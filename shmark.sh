@@ -822,7 +822,7 @@ _shmark_list() {
     local listall=${listall:-0}     # inherit from calling function
     local dir_only=${dir_only:-0}   # inherit from calling function
     local i=1
-    local n category result escaped_category list_items
+    local n category result escaped_category list_items width
     local missing_category=0
     local include_blank_categories=1
 
@@ -836,6 +836,10 @@ _shmark_list() {
 
     max=${max#-} # don't need the dash anymore; just the integer
 
+    # Get the number of digits in the last line number:
+    width=$( echo $( wc -l < "$SHMARK_FILE" ) )
+    width=${#width}
+
     while read -r category; do
         if [[ -z "$category" ]]; then
             # Skip uncategorized bookmarks for now. Add them at the bottom.
@@ -845,10 +849,12 @@ _shmark_list() {
         escaped_category=$(sed -E 's/[]\.*+?$|(){}[^-]/\\&/g' <<< "$category")
         n=$(grep -c "^$escaped_category" "$SHMARK_FILE") # no. matching lines
         [ $dir_only -eq 1 ] || echo "$category"
-        list_items=$(__shmark_format_list_items $dir_only $i "$category")
+        list_items=$(__shmark_format_list_items $dir_only $i $width \
+            "$category")
         i=$(( i + n )) # the next list position
         if [ $dir_only -eq 0 ]; then
-            __shmark_wrap_list_items "$max" $i $n "$list_items" || return
+            __shmark_wrap_list_items "$max" $i $n $width "$list_items" \
+                || return
         else
             echo "$list_items"
         fi
@@ -860,10 +866,12 @@ _shmark_list() {
             category=""
             n=$(grep -c "^[|]" "$SHMARK_FILE") # no. matching lines
             [ $dir_only -eq 1 ] || echo "$SHMARK_DEFAULT_CATEGORY"
-            list_items=$(__shmark_format_list_items $dir_only $i "$category")
+            list_items=$(__shmark_format_list_items $dir_only $i $width \
+                "$category")
             i=$(( i + n )) # the next list position
             if [ $dir_only -eq 0 ]; then
-                __shmark_wrap_list_items "$max" $i $n "$list_items" || return
+                __shmark_wrap_list_items "$max" $i $n $width "$list_items" \
+                    || return
             else
                 echo "$list_items"
             fi
@@ -1040,18 +1048,20 @@ __shmark_prepare_new_bookmark() {
 ##
 # @param $1 (integer) Bool 1=true, 0=false. Should only directories be returned?
 # @param $2 (integer) Starting list postition number
-# @param $3 (string)  Bookmark category
+# @param $3 (integer) Number of digits in last line number
+# @param $4 (string)  Bookmark category
 # @return   (string)  Formatted list items
 __shmark_format_list_items() {
-    if [ $# -ne 3 ]; then
-        echo >&2 "Error: '$FUNCNAME()' requires three arguments."
-        echo >&2 "Usage: $FUNCNAME DIR_ONLY(int) IDX(int) CATEGORY(str)"
+    if [ $# -ne 4 ]; then
+        echo >&2 "Error: '$FUNCNAME()' requires four arguments."
+        echo >&2 "Usage: $FUNCNAME DIR_ONLY(int) IDX(int) WIDTH(int) CATEGORY(str)"
         return 1
     fi
     local dir_only=$1
     local idx=$2
-    local category="$3"
-    local result width
+    local width="$3"
+    local category="$4"
+    local result
 
     # Find lines with matching category:
     result=$(sed -n "s!^$category\|\([^|]*\)\|.*!\1!p" "$SHMARK_FILE")
@@ -1059,9 +1069,6 @@ __shmark_format_list_items() {
     if [ $dir_only -eq 1 ]; then
         echo "$result"
     else
-        # Get the number of digits in the last line number:
-        width=$( echo $( wc -l < "$SHMARK_FILE" ) )
-        width=${#width}
         # Indent list items two spaces:
         width=$(( width + 2 ))
         # Number the list items:
@@ -1140,32 +1147,40 @@ __shmark_wrap_long_line() {
 # @param $1 (integer) Maximum list items
 # @param $2 (integer) Next list index
 # @param $3 (integer) Number of list items
-# @param $4 (string)  The list items to wrap
+# @param $4 (integer) Number of digits in last line number
+# @param $5 (string)  The list items to wrap
 # @return   (string)  Wrapped lines
 __shmark_wrap_list_items() {
-    if [ $# -ne 4 ]; then
-        echo >&2 "Error: '$FUNCNAME()' requires four arguments."
+    if [ $# -ne 5 ]; then
+        echo >&2 "Error: '$FUNCNAME()' requires five arguments."
         echo >&2 \
-            "Usage: $FUNCNAME MAX(int) INDEX(int) LINE_COUNT(int) ITEMS(str)"
+            "Usage: $FUNCNAME MAX(int) INDEX(int) LINE_COUNT(int) WIDTH(int) ITEMS(str)"
         return 1
     fi
     local max="$1"
     local idx="$2"
     local line_count="$3"
-    local list_items="$4"
-    local h line
+    local width="$4"
+    local list_items="$5"
+    local h line indent
+
+    # Adjust indent width for added list characters
+    # (see __shmark_format_list_items):
+    width=$(( width + 4 ))
+    indent=$(printf "%${width}s" " ")
+
     if [ $max  -gt 0 ] && [ $idx -gt $max ]; then
         h=$(( max - idx + 1 + line_count )) # number for 'head'
         #echo >&2 "DEBUG: h = (max - i + 1 + n) = ($max - $i + 1 + $n) = $h"
         while IFS= read -r line; do
-            __shmark_wrap_long_line 80 '/' "      " "$line"
+            __shmark_wrap_long_line 80 '/' "$indent" "$line"
         done <<< "$(head -${h} <<< "$list_items")"
         #echo >&2 "DEBUG: exiting..."
         return 1 # not an error, but signal caller to exit
     fi
     #echo >&2 "DEBUG: --- list items ($n):"
     while IFS= read -r line; do
-        __shmark_wrap_long_line 80 '/' "      " "$line"
+        __shmark_wrap_long_line 80 '/' "$indent" "$line"
     done <<< "$list_items"
     return 0
 }
