@@ -99,8 +99,8 @@ INSTALLATION
 OPTIONS
     -#
         Shortcut to go (cd) to a directory bookmark by its list position
-        (available from the 'list' command). Just prefix the list
-        position number (#) with a hyphen, e.g.:
+        (available from the 'list' command). Use the list position
+        number (#) with a leading hyphen (-), e.g.:
 
             shmark -2
 
@@ -223,9 +223,9 @@ _shmark_actions_help() {
     help
         Display detailed help.
 
-    insert|ins LIST_POSITION
+    insert|ins NUMBER
         Insert a bookmark for the current directory at a specific list
-        position (number). List positions can be found in the output of
+        position NUMBER. List positions can be found in the output of
         the 'list' or 'listall' actions. The bookmark currently
         occupying the target list position as well as any bookmarks
         following it will all be pushed down one position.
@@ -237,7 +237,7 @@ _shmark_actions_help() {
         can append to specific categories rather than only the last
         listed category.
 
-    list|ls [NUMBER]
+    list|ls [-#]
         Show a list of saved bookmarks. Bookmarks are listed by category
         and are prefixed by their list index number. (Note that the list
         index number is not the same as the line number in the actual
@@ -246,10 +246,13 @@ _shmark_actions_help() {
         included in the list. Use 'listall' to see a list of all
         bookmarks including those that are uncategorized.
 
-        Limit the number of bookmarks shown by supplying a NUMBER
-        argument indicating the maximum.
+        Limit the number of bookmarks shown by supplying a number
+        argument with a leading hyphen (-NUMBER) indicating the maximum,
+        e.g.:
 
-    listall|lsa [NUMBER]
+            shmark list -5
+
+    listall|lsa [-#]
         Like 'list', but include uncategorized bookmarks. Uncategorized
         bookmarks are listed after all other categories using a default
         category, which is "MISCELLANEOUS" unless customized by setting
@@ -815,7 +818,7 @@ _shmark_list() {
     #unset SHMARK_DEFAULT_CATEGORY  # DEBUG 'set -o nounset (set -u)'
     __shmark_setup_envvars || return 1
 
-    local max=${1:-0}
+    local max=${1:--0}
     local listall=${listall:-0}     # inherit from calling function
     local dir_only=${dir_only:-0}   # inherit from calling function
     local i=1
@@ -825,11 +828,13 @@ _shmark_list() {
 
     [[ -s "$SHMARK_FILE" ]] || return
 
-    if [[ ! "$max" =~ ^[0-9]+$ ]]; then
-        echo >&2 "Error: The 'list' action takes an optional integer argument."
+    if [[ ! "$max" =~ ^-[0-9]+$ ]]; then
+        echo >&2 "Error: The 'list' action takes an optional -NUM argument."
         _shmark_usage
         return $?
     fi
+
+    max=${max#-} # don't need the dash anymore; just the integer
 
     while read -r category; do
         if [[ -z "$category" ]]; then
