@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -o nounset  # (set -u) Treat unset variables as error and exit script
 #set -o errexit  # (set -e) Exit if any command returns a non-zero status
 set -o pipefail # Return non-zero status if any piped commands fail
@@ -6,22 +6,9 @@ set -o pipefail # Return non-zero status if any piped commands fail
 #
 # Tests for shmark
 #
-# @date    2014-02-08 Last modified
+# @date    2014-05-23 Last modified
 # @date    2014-01-26 First version
 # @author  Steve Wheeler
-#
-# To run all tests, from the main project directory (not this 't' test
-# directory), run:
-#
-#     make test
-#
-# which runs:
-#
-#     prove -f ./t/[0-9][0-9][0-9]-*.sh
-#
-# Test scripts can also be run individually with:
-#
-#     bash t/<test_name>.sh
 #
 ##############################################################################
 
