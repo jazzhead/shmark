@@ -17,7 +17,7 @@ set -o pipefail # Return non-zero status if any piped commands fail
 PROGNAME="${0##*/}"                             # get file basename
 PROGDIR=$(cd $(dirname $0) && pwd) || exit $?   # get script directory
 PROGNAME="${PROGNAME%.*}"                       # file name w/o extension
-ADDED_DIR="${PROGDIR/#$HOME/~}" # get absolute directory path (for sourced lib)
+ADDED_DIR=${PROGDIR/#$HOME/\~} # get absolute directory path (for sourced lib)
 
 # Change to the test directory (so we can specify all paths as relative
 # to the test directory):

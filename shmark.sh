@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2014-02-08 Last modified
+# @date    2014-05-23 Last modified
 # @date    2014-01-18 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -479,7 +479,7 @@ _shmark_cd() {
     elif [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
         dir="$(__shmark_get_directory_from_list_index $1)"
     else
-        dir="${1/#$HOME/~}" # HOME is replaced with tilde in bookmarks file
+        dir=${1/#$HOME/\~} # HOME is replaced with tilde in bookmarks file
     fi
 
     # Need the absolute path (no tilde) for changing directories:
@@ -494,7 +494,7 @@ _shmark_cd() {
         echo >&2 "Error: Couldn't change to directory: '$dir'"
         return 1
     }
-    echo >&2 "${PWD/#$HOME/~}"
+    echo >&2 ${PWD/#$HOME/\~}
 
     # Get line number for updating the bookmarks file:
     line_num=$(__shmark_get_line_number "$dir")
@@ -518,7 +518,7 @@ _shmark_cd() {
 _shmark_add() {
     __shmark_setup_envvars || return 1
 
-    local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
+    local curdir=${PWD/#$HOME/\~}     # Replace home directory with tilde
 
     local bookmark="$(__shmark_prepare_new_bookmark "$@")"
     [[ -z "$bookmark" ]] && return 1
@@ -535,7 +535,7 @@ _shmark_add() {
 _shmark_append() {
     __shmark_setup_envvars || return 1
 
-    local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
+    local curdir=${PWD/#$HOME/\~}     # Replace home directory with tilde
 
     local bookmark="$(__shmark_prepare_new_bookmark "$@")"
     [[ -z "$bookmark" ]] && return 1
@@ -604,7 +604,7 @@ _shmark_insert() {
 
     # Need category of bookmark currently occupying target list position
     local category=$(awk -F\| 'NR=='$line_num' {print $1}' "$SHMARK_FILE")
-    local curdir="${PWD/#$HOME/~}"     # Replace home directory with tilde
+    local curdir=${PWD/#$HOME/\~}     # Replace home directory with tilde
 
     # If there is already an existing bookmark for the current directory,
     # find its line number before deleting it.
@@ -809,7 +809,8 @@ _shmark_edit() {
     __shmark_setup_envvars || return 1
 
     local editor=${EDITOR-vi}
-    echo >&2 "Editing bookmarks file (${SHMARK_FILE/#$HOME/~})..."
+    local shortpath=${SHMARK_FILE/#$HOME/\~}  # Replace home dir with tilde
+    echo >&2 "Editing bookmarks file ($shortpath)..."
     $editor "$SHMARK_FILE"
 }
 
@@ -931,10 +932,11 @@ _shmark_undo() {
 _shmark_env() {
     __shmark_setup_envvars || return 1
 
-    local v
+    local var val
     printf "%s\n" "Current shmark environment variables:" ""
-    for v in $(echo ${!SHMARK_@}); do
-        printf "    %-25s = %s\n" $v "${!v/#$HOME/~}"
+    for var in $(echo ${!SHMARK_@}); do
+        val=${!var/#$HOME/\~}    # Replace home dir with tilde
+        printf "    %-25s = %s\n" $var "$val"
     done
     return 0
 }
@@ -1228,7 +1230,7 @@ __shmark_get_line_number() {
     if [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
         dir="$(__shmark_get_directory_from_list_index $1)"
     else
-        dir="${1/#$HOME/~}" # bookmarks file uses tildes for HOME
+        dir=${1/#$HOME/\~} # bookmarks file uses tildes for HOME
     fi
     fgrep -n -m1 "|${dir}|" "$SHMARK_FILE" | cut -d: -f1
 }
