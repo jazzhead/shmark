@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2014-05-23 Last modified
+# @date    2014-05-26 Last modified
 # @date    2014-01-18 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -855,7 +855,7 @@ _shmark_list() {
         i=$(( i + n )) # the next list position
         if [ $dir_only -eq 0 ]; then
             __shmark_wrap_list_items "$max" $i $n $width "$list_items" \
-                || return
+                || return 0  # override non-zero returned from function
         else
             echo "$list_items"
         fi
@@ -872,7 +872,7 @@ _shmark_list() {
             i=$(( i + n )) # the next list position
             if [ $dir_only -eq 0 ]; then
                 __shmark_wrap_list_items "$max" $i $n $width "$list_items" \
-                    || return
+                    || return 0  # override non-zero returned from function
             else
                 echo "$list_items"
             fi
