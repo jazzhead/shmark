@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2014-05-26 Last modified
+# @date    2015-01-24 Last modified
 # @date    2014-01-18 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -280,16 +280,7 @@ _shmark_actions_help() {
     move|mv FROM_POSITION TO_POSITION
         Move a bookmark from one list postion (number) to another. List
         positions can be found in the output of the 'list' or 'listall'
-        actions. The bookmark currently occupying the target list
-        position as well as any bookmarks following it will all be
-        pushed down one position.
-
-        A bookmark can be appended to the end of the list by giving a
-        list position that is greater than the last position (shown by
-        the 'listall' command), but the 'append' command is made
-        specifically for appending. Additionally, the 'append' command
-        can append to specific categories rather than only the last
-        listed category.
+        actions.
 
     print
         Print the raw, unformatted bookmark file. The lines are prefixed
@@ -676,9 +667,10 @@ _shmark_move() {
     __shmark_validate_num "$from_list_pos" "$errmsg" || return $?
     __shmark_validate_num "$to_list_pos" "$errmsg" || return $?
 
-    # If the target list position number is greater than the bookmark total,
-    # that means append the new bookmark as the very last bookmark.
-    if [ $to_list_pos -gt $line_total ]; then
+    # If the target list position number is greater than or equal to the
+    # bookmark total, that means append the new bookmark as the very last
+    # bookmark.
+    if [ $to_list_pos -ge $line_total ]; then
         # Need the list position for the current last bookmark so we can look
         # up its actual line number and then find out what its category is.
         to_list_pos=$line_total
@@ -694,6 +686,12 @@ _shmark_move() {
     # Make sure the line numbers are non-zero integers:
     __shmark_validate_num "$from_line_num" "$errmsg" || return $?
     __shmark_validate_num "$to_line_num" "$errmsg" || return $?
+
+    # If the target line number is greater than or equal to the total lines in
+    # the file, that means append the new bookmark as the very last line.
+    if [ $to_line_num -ge $line_total ]; then
+        ed_cmd='$a'
+    fi
 
     # Get existing bookmark w/o the category (fields 2-4):
     local bookmark=$(
@@ -713,17 +711,10 @@ _shmark_move() {
     local should_report_failure=0  # set to 1 for debugging
     _shmark_delete "$from_list_pos" >/dev/null
 
-    # If the line number for the old bookmark was less than the target
-    # line number, decrement both the target line number (to reflect the
-    # new target number) and the line total:
-    (( from_line_num < to_line_num )) && (( to_line_num--, line_total-- ))
-
-    # If the old bookmark list position was above the target list
-    # position, then decrement the target postion:
-    (( from_list_pos < to_list_pos )) && (( to_list_pos-- ))
-
     # If we don't have an 'ed' command yet, that means we're inserting:
     [[ -z "$ed_cmd" ]] && ed_cmd="${to_line_num}i"
+
+    #echo >&2 "[debug] ed_cmd = $ed_cmd"
 
     printf '%s\n' "$ed_cmd" "$bookmark" . w | ed -s "$SHMARK_FILE"
     echo >&2 "Bookmark for '$directory' moved."
