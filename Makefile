@@ -2,15 +2,16 @@
 #
 # Makefile for shmark
 #
-# @date    2014-02-05 Last modified
-# @date    2014-02-04 First version
+# http://jazzheaddesign.com/work/code/shmark/
+#
 # @author  Steve Wheeler
 #
 ##############################################################################
 
+# **BEFORE** tagging release, update version number.
+#
 # Version used for distributions (when there is no git repo).
-# Update before tagging release.
-VERSION = 0.1.0
+VERSION = 0.1.1
 
 SHELL   = /bin/sh
 
