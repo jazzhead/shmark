@@ -3,7 +3,7 @@
 #
 # shmark - Categorized shell directory bookmarking for Bash
 #
-# Copyright (c) 2014 Steve Wheeler
+# Copyright (c) 2014-2015 Steve Wheeler
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -308,7 +308,7 @@ _shmark_version() {
     __shmark_setup_envvars
     cat <<___EndVersion___
 shmark $SHMARK_VERSION
-Copyright (c) 2014 Steve Wheeler
+Copyright (c) 2014-2015 Steve Wheeler
 
 This program comes with ABSOLUTELY NO WARRANTY. It is free software
 available under the terms of a BSD-style (3-clause) open source license.
