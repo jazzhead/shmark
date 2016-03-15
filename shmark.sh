@@ -220,8 +220,9 @@ _shmark_actions_help() {
         Show the values for any shmark environment variables that have
         been set.
 
-    help
-        Display detailed help.
+    help [ACTION]
+        Display detailed help. If an ACTION argument is given, help for only
+        that action will be shown instead of the full help.
 
     index|idx
         Show the list index (list position) of the current directory if
@@ -428,6 +429,27 @@ shmark() {
         edit|ed         ) _shmark_edit                ;;
         shorthelp       ) _shmark_shorthelp           ;;
         help)
+            shift
+            # If there's an arg, show help for only that action
+            if [ $# -gt 0 ]; then
+                local arg="$1"
+                local should_print=0
+                while IFS= read -r line; do
+                    if egrep -q "^    $arg\b" <<< "$line"; then
+                        should_print=1
+                        echo "$line"
+                        continue        # to next line
+                    fi
+                    if [[ $should_print -eq 1 ]] \
+                        && egrep -q '^    [^ ]' <<< "$line"; then
+                        break           # another action line stops printing
+                    fi
+                    if [[ $should_print -eq 1 ]]; then
+                        echo "$line"    # the action help
+                    fi
+                done <<< "$(_shmark_actions_help)"
+                return $?
+            fi
             # If STDOUT is to a terminal (TTY), then try to pipe
             # the output to the PAGER (less by default):
             if [ -t 1 ]; then
