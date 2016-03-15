@@ -3,7 +3,7 @@
 #
 # shmark - Categorized shell directory bookmarking for Bash
 #
-# Copyright (c) 2014-2015 Steve Wheeler
+# Copyright (c) 2014-2016 Steve Wheeler
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2015-01-24 Last modified
+# @date    2016-03-15 Last modified
 # @date    2014-01-18 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -222,6 +222,11 @@ _shmark_actions_help() {
 
     help
         Display detailed help.
+
+    index|idx
+        Show the list index (list position) of the current directory if
+        bookmarked (as indexed by the 'list' action). Nothing is returned if
+        the directory is not bookmarked.
 
     insert|ins NUMBER
         Insert a bookmark for the current directory at a specific list
@@ -416,6 +421,7 @@ shmark() {
         listcat|lsc     ) _shmark_listcat             ;;
         listdir|lsd     ) _shmark_listdir             ;;
         listunsort|lsus ) _shmark_listunsort          ;;
+        index|idx       ) _shmark_index               ;;
         print           ) _shmark_print               ;;
         undo            ) _shmark_undo                ;;
         env             ) _shmark_env                 ;;
@@ -533,6 +539,15 @@ _shmark_append() {
 
     echo "$bookmark" >> "$SHMARK_FILE"
     echo >&2 "Bookmark appended for '$curdir'."
+}
+
+##
+# Show the list index of the current directory if bookmarked.
+#
+# @return (integer|string) Bookmark list position or empty string
+_shmark_index() {
+    __shmark_setup_envvars || return 1
+    __shmark_get_list_index_from_directory ${PWD/#$HOME/\~}
 }
 
 ##

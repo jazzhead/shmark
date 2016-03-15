@@ -3,7 +3,7 @@
 #
 # shmark_completion.sh - Bash completions for shmark
 #
-# Copyright (c) 2014 Steve Wheeler
+# Copyright (c) 2014-2016 Steve Wheeler
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2014-02-01 Last modified
+# @date    2016-03-15 Last modified
 # @date    2014-01-27 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -57,8 +57,8 @@ _shmark() {
     #
     local -r commands="\
         add a append app cd go cd go chcat cc chcat cc del rm del rm \
-        edit ed env help insert ins list ls listall lsa listcat lsc \
-        listdir lsd listunsort lsus move mv print shorthelp undo"        
+        edit ed env help index idx insert ins list ls listall lsa \
+        listcat lsc listdir lsd listunsort lsus move mv print shorthelp undo"
 
     # Total number of bookmarked directories:
     local -r list_total=$( shmark lsd | wc -l )
