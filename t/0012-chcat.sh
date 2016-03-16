@@ -6,7 +6,7 @@ set -o pipefail # Return non-zero status if any piped commands fail
 #
 # Tests for shmark
 #
-# @date    2014-05-23 Last modified
+# @date    2016-03-16 Last modified
 # @date    2014-01-26 First version
 # @author  Steve Wheeler
 #
@@ -44,7 +44,7 @@ cp -f "$SAMPLE_FILE" "$TMPFILE" || exit $?  # copy sample bookmarks file
 
 EXPECTED_FILE="data/expected/${PROGNAME}/001.txt"
 EXPECTED=$(cat "$EXPECTED_FILE")
-shmark -f "$TMPFILE" chcat "_FOO" 4 >/dev/null 2>&1
+shmark -f "$TMPFILE" chcat -f "_FOO" 4 >/dev/null 2>&1
 RESULT=$(cat "$TMPFILE")
 while IFS= read -r line; do
     diag "$line"
@@ -53,7 +53,7 @@ is "$RESULT" "$EXPECTED" "shmark chcat"
 
 EXPECTED_FILE="data/expected/${PROGNAME}/002.txt"
 EXPECTED=$(cat "$EXPECTED_FILE")
-shmark -f "$TMPFILE" chcat "" 7 >/dev/null 2>&1
+shmark -f "$TMPFILE" chcat -f "" 7 >/dev/null 2>&1
 RESULT=$(cat "$TMPFILE")
 while IFS= read -r line; do
     diag "$line"

@@ -195,8 +195,8 @@ _shmark_actions_help() {
 
             shmark -2
 
-    chcat|cc CATEGORY BOOKMARK
-    chcat|cc CATEGORY NUMBER
+    chcat|cc [-f] CATEGORY [BOOKMARK]
+    chcat|cc [-f] CATEGORY [NUMBER]
         Change the CATEGORY of the specified BOOKMARK. The bookmarked
         directory can be specified by its full path (available with tab
         completion from a partially typed path) or by specifying the
@@ -204,6 +204,15 @@ _shmark_actions_help() {
         using the 'list' or 'listall' actions.
 
         Tab completion can also be used for the CATEGORY.
+
+        If no BOOKMARK or NUMBER is given, the default behavior is to
+        change the category for the current directory's bookmark if such
+        a bookmark exists.
+
+        Options:
+
+        -f      Change the category of the bookmark without prompting
+                for confirmation. Confirmation is requested by default.
 
     del|rm [-f] [BOOKMARK]
     del|rm [-f] [NUMBER]
@@ -853,19 +862,62 @@ _shmark_delete() {
 _shmark_chcat() {
     __shmark_setup_envvars || return 1
 
-    if [ $# -ne 2 ]; then
-        echo >&2 "Error: The 'chcat' action requires two arguments."
+    local idx dir
+    local msg=":"
+    local force=0   # prompt for confirmation by default
+
+    if [ $# -gt 0 ]; then
+        if [ "$1" == "-f" ]; then
+            force=1
+            shift
+        fi
+    fi
+
+    if [ $# -lt 1 ]; then
+        echo >&2 "Error: The 'chcat' action requires at least one argument."
         _shmark_usage
         return $?
     fi
 
-    local category="$1"
-    local line_num=$(__shmark_get_line_number "$2")
+    local category="$1"; shift
+
+    if [ $# -eq 0 ]; then
+        # Default to current directory if no arg
+        dir=${PWD/#$HOME/\~} # HOME is replaced with tilde in bookmarks file
+        idx="$(__shmark_get_list_index_from_directory $dir)"
+        msg=" for current directory${msg}"
+    elif [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
+        idx=$1
+        dir="$(__shmark_get_directory_from_list_index $1)"
+    else
+        dir=${1/#$HOME/\~} # HOME is replaced with tilde in bookmarks file
+        idx="$(__shmark_get_list_index_from_directory $dir)"
+    fi
+
+    msg="Change category to $category for bookmark${msg}"$'\n'"  '${idx}) ${dir}'?"
+
+    if [[ $force -ne 1 ]]; then
+        read -p "$msg"$'\n'"[y/N] " choice
+        case $choice in
+            [Yy])
+                :
+                ;;
+            *)
+                echo >&2 "Canceling..."
+                return 1
+                ;;
+        esac
+        #echo >&2 "Continuing..."   # DEBUG
+    fi
+    #return 0                       # DEBUG: stop before changing category
+
+    local line_num=$(__shmark_get_line_number "$dir")
     local errmsg=$( printf "%s\n" \
-        "Error: The 'chcat' action requires two arguments: a category and" \
-        "       either a bookmark directory path or a number chosen from" \
-        "       the bookmarks list." \
-        "Usage: shmark chcat CATEGORY BOOKMARK|NUMBER"
+        "Error: The 'chcat' action requires at least one argument: a category" \
+        "       and optionally a bookmark directory path or a number chosen"   \
+        "       from the bookmarks list. The current directory will be used"   \
+        "       if the optional second argument isn't specified."              \
+        "Usage: shmark chcat [-f] CATEGORY [BOOKMARK|NUMBER]"
     )
 
     __shmark_validate_num "$line_num" "$errmsg" || return $?
