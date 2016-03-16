@@ -301,10 +301,18 @@ _shmark_actions_help() {
         available for use with any external command that might want the
         data.
 
-    move|mv FROM_POSITION TO_POSITION
+    move|mv [-f] [FROM_POSITION] TO_POSITION
         Move a bookmark from one list postion (number) to another. List
         positions can be found in the output of the 'list' or 'listall'
         actions.
+
+        If the FROM_POSITION is omitted, the bookmark for the current
+        directory will be moved if such a bookmark exists.
+
+        Options:
+
+        -f      Move the bookmark list position without prompting for
+                confirmation. Confirmation is requested by default.
 
     print
         Print the raw, unformatted bookmark file. The lines are prefixed
@@ -698,29 +706,72 @@ _shmark_insert() {
 _shmark_move() {
     __shmark_setup_envvars || return 1
 
+    local force=0   # prompt for confirmation by default
+
+    # Parse options
+    if [ $# -gt 0 ]; then
+        if [ "$1" == "-f" ]; then
+            force=1
+            shift
+        fi
+    fi
+
     local line_total=$(echo $(wc -l < "$SHMARK_FILE"))
     local np=$((line_total + 1)) # 'np' = "next position" - need short var for:
     local errmsg=$( printf "%s\n" \
-        "Error: The 'move' action requires two number arguments chosen" \
-        "       from the bookmarks list -- a source position and a target" \
-        "       postition. To append as the last bookmark, use ${np} as the" \
-        "       target postion; otherwise, use a number 1-${line_total}."
+        "Error: The 'move' action requires at least one number argument"    \
+        "       chosen from the bookmarks list -- a target position (the"   \
+        "       current directory will be used for the source position if"  \
+        "       that first argument is omitted). To append as the last"     \
+        "       bookmark, use ${np} as the target position; otherwise, use" \
+        "       a number 1-${line_total}."
     )
 
-    if [ $# -ne 2 ]; then
+    local from_list_pos to_list_pos dir
+
+    # Parse arguments
+    if   [ $# -eq 2 ]; then
+        from_list_pos="$1"
+        to_list_pos="$2"
+        # Make sure list position arguments are non-zero integers:
+        __shmark_validate_num "$from_list_pos" "$errmsg" || return $?
+        __shmark_validate_num "$to_list_pos" "$errmsg" || return $?
+        dir="$(__shmark_get_directory_from_list_index $from_list_pos)"
+    elif [ $# -eq 1 ]; then
+        to_list_pos="$1"
+        __shmark_validate_num "$to_list_pos" "$errmsg" || return $?
+        # Default to current directory if no FROM arg
+        dir=${PWD/#$HOME/\~} # HOME is replaced with tilde in bookmarks file
+        from_list_pos="$(__shmark_get_list_index_from_directory $dir)"
+        __shmark_validate_num "$from_list_pos" "$errmsg" || return $?
+    else
         echo >&2 "$errmsg"
         _shmark_usage
         return $?
     fi
 
-    local from_list_pos="$1"
-    local to_list_pos="$2"
-    local ed_cmd=
-    local from_line_num from_list_pos to_line_num to_list_pos
+    local msg from_line_num to_line_num
 
-    # Make sure list position arguments are non-zero integers:
-    __shmark_validate_num "$from_list_pos" "$errmsg" || return $?
-    __shmark_validate_num "$to_list_pos" "$errmsg" || return $?
+    msg="Move the following bookmark to list position ${to_list_pos}?"$'\n'
+    msg="${msg}  '${from_list_pos}) ${dir}'"
+
+    if [[ $force -ne 1 ]]; then
+        read -p "$msg"$'\n'"[y/N] " choice
+        case $choice in
+            [Yy])
+                :
+                ;;
+            *)
+                echo >&2 "Canceling..."
+                return 1
+                ;;
+        esac
+        #echo >&2 "Continuing..."   # DEBUG
+    fi
+    #echo >&2 "DEBUG: Stopping before moving bookmark..."    # DEBUG
+    #return 0    # DEBUG: stop
+
+    local ed_cmd=
 
     # If the target list position number is greater than or equal to the
     # bookmark total, that means append the new bookmark as the very last

@@ -6,7 +6,7 @@ set -o pipefail # Return non-zero status if any piped commands fail
 #
 # Tests for shmark
 #
-# @date    2015-01-24 Last modified
+# @date    2016-03-16 Last modified
 # @date    2014-01-24 First version
 # @author  Steve Wheeler
 #
@@ -40,7 +40,7 @@ tap_move() {
     local to_idx=$2
     local msg="${3:-}"
     EXPECTED=$(cat "$EXPECTED_FILE")
-    shmark -f "$TMPFILE" move $from_idx $to_idx >/dev/null 2>&1
+    shmark -f "$TMPFILE" move -f $from_idx $to_idx >/dev/null 2>&1
     RESULT=$(cat "$TMPFILE")
     is "$RESULT" "$EXPECTED" "shmark move ${from_idx} ${to_idx}$msg"
 }
