@@ -945,7 +945,11 @@ _shmark_chcat() {
         idx="$(__shmark_get_list_index_from_directory $dir)"
     fi
 
-    msg="Change category to $category for bookmark${msg}"$'\n'"  '${idx}) ${dir}'?"
+    if [[ -z "$category" ]]; then
+        msg="Remove category from bookmark${msg}"$'\n'"  '${idx}) ${dir}'?"
+    else
+        msg="Change category to $category for bookmark${msg}"$'\n'"  '${idx}) ${dir}'?"
+    fi
 
     if [[ $force -ne 1 ]]; then
         read -p "$msg"$'\n'"[y/N] " choice
