@@ -178,6 +178,9 @@ _shmark_actions_help() {
         in its category. All bookmarks are grouped by category in the
         output of the 'list' and 'listall' commands.
 
+    cat
+        Show the category of the current directory if bookmarked.
+
     cd|go [BOOKMARK]
     cd|go [NUMBER]
         Go (cd) to the specified directory BOOKMARK. The bookmarked
@@ -448,6 +451,7 @@ shmark() {
         listcat|lsc     ) _shmark_listcat             ;;
         listdir|lsd     ) _shmark_listdir             ;;
         listunsort|lsus ) _shmark_listunsort          ;;
+        cat             ) _shmark_cat                 ;;
         index|idx       ) _shmark_index               ;;
         print           ) _shmark_print               ;;
         undo            ) _shmark_undo                ;;
@@ -587,6 +591,18 @@ _shmark_append() {
 
     echo "$bookmark" >> "$SHMARK_FILE"
     echo >&2 "Bookmark appended for '$curdir'."
+}
+
+##
+# Show the category of the current directory if bookmarked.
+#
+# @return (string) Bookmark category
+_shmark_cat() {
+    __shmark_setup_envvars || return 1
+    local line_num=$(__shmark_get_line_number ${PWD/#$HOME/\~})
+    if [[ -n "$line_num" ]]; then
+        awk -F\| 'NR=='$line_num' {print $1}' "$SHMARK_FILE"
+    fi
 }
 
 ##

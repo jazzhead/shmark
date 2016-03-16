@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2016-03-15 Last modified
+# @date    2016-03-16 Last modified
 # @date    2014-01-27 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -56,7 +56,7 @@ _shmark() {
     #   echo $(shmark -h | sed -En 's/^    ([^ ]+).*/\1/p' | sed 's/\|/ /g')
     #
     local -r commands="\
-        add a append app cd go cd go chcat cc chcat cc del rm del rm \
+        add a append app cat cd go cd go chcat cc chcat cc del rm del rm \
         edit ed env help index idx insert ins list ls listall lsa \
         listcat lsc listdir lsd listunsort lsus move mv print shorthelp undo"
 
