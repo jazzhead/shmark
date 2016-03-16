@@ -6,7 +6,7 @@ set -o pipefail # Return non-zero status if any piped commands fail
 #
 # Tests for shmark
 #
-# @date    2014-05-23 Last modified
+# @date    2016-03-16 Last modified
 # @date    2014-01-24 First version
 # @author  Steve Wheeler
 #
@@ -38,7 +38,7 @@ unset ${!SHMARK_@}
 tap_delete() {
     local msg="${1:-}"
     EXPECTED=$(replace_timestamps < "$EXPECTED_FILE")
-    shmark -f "$TMPFILE" del "$DEL_TARGET" >/dev/null 2>&1
+    shmark -f "$TMPFILE" del -f "$DEL_TARGET" >/dev/null 2>&1
     RESULT=$(replace_timestamps < "$TMPFILE")
     is "$RESULT" "$EXPECTED" "shmark del ${DEL_TARGET}$msg"
 }
@@ -112,7 +112,7 @@ cp -f "$SAMPLE_FILE" "$TMPFILE" || exit $?  # copy sample bookmarks file
 diag "Group C"
 
 EXPECTED_FILE="${EXPECTED_TMPL/:::/c01}"
-shmark -f "$TMPFILE" del 1 >/dev/null 2>&1
+shmark -f "$TMPFILE" del -f 1 >/dev/null 2>&1
 diff -q "$EXPECTED_FILE" "$TMPFILE" >/dev/null 2>&1
 ok $? "'shmark del' - delete only bookmark in file"
 

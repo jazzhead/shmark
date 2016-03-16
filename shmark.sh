@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2016-03-15 Last modified
+# @date    2016-03-16 Last modified
 # @date    2014-01-18 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -205,13 +205,22 @@ _shmark_actions_help() {
 
         Tab completion can also be used for the CATEGORY.
 
-    del|rm BOOKMARK
-    del|rm NUMBER
+    del|rm [-f] [BOOKMARK]
+    del|rm [-f] [NUMBER]
         Delete the specified directory BOOKMARK from the bookmarks file.
         The bookmarked directory can be specified by its full path
         (available with tab completion from a partially typed path) or
         by specifying the bookmark's list position NUMBER. The list
         position can be found using the 'list' or 'listall' actions.
+
+        If no BOOKMARK or NUMBER is given, the default behavior is to
+        delete the bookmark for the current directory if such a bookmark
+        exists.
+
+        Options:
+
+        -f      Delete the bookmark without prompting for confirmation.
+                Confirmation is requested by default.
 
     edit|ed
         Open the bookmarks file in the default EDITOR.
@@ -221,13 +230,13 @@ _shmark_actions_help() {
         been set.
 
     help [ACTION]
-        Display detailed help. If an ACTION argument is given, help for only
-        that action will be shown instead of the full help.
+        Display detailed help. If an ACTION argument is given, help for
+        only that action will be shown instead of the full help.
 
     index|idx
         Show the list index (list position) of the current directory if
-        bookmarked (as indexed by the 'list' action). Nothing is returned if
-        the directory is not bookmarked.
+        bookmarked (as indexed by the 'list' action). Nothing is
+        returned if the directory is not bookmarked.
 
     insert|ins NUMBER
         Insert a bookmark for the current directory at a specific list
@@ -585,7 +594,7 @@ _shmark_insert() {
     local line_total=$(echo $(wc -l < "$SHMARK_FILE"))
     local np=$((line_total + 1)) # 'np' = "next position" - need short var for:
     local default_errmsg=$( printf "%s\n" \
-        "Error: The 'insert' action requires a number argument chosen" \
+        "Error: The 'insert' action requires a number argument chosen"    \
         "       from the bookmarks list. To append as the last bookmark," \
         "       use ${np}; otherwise, use a number 1-${line_total}."
     )
@@ -645,7 +654,7 @@ _shmark_insert() {
         # Delete the old bookmark:
         local delete_msg="Old bookmark deleted."
         local should_report_failure=0  # set to 1 for debugging
-        bookmark=$(_shmark_delete "$cur_list_pos")
+        bookmark=$(_shmark_delete -f "$cur_list_pos")
 
         # Update category for existing bookmark:
         bookmark=$(__shmark_update_category "$bookmark" "$category")
@@ -746,7 +755,7 @@ _shmark_move() {
     # Delete the old bookmark:
     local delete_msg="Old bookmark deleted."
     local should_report_failure=0  # set to 1 for debugging
-    _shmark_delete "$from_list_pos" >/dev/null
+    _shmark_delete -f "$from_list_pos" >/dev/null
 
     # If we don't have an 'ed' command yet, that means we're inserting:
     [[ -z "$ed_cmd" ]] && ed_cmd="${to_line_num}i"
@@ -766,15 +775,50 @@ _shmark_move() {
 _shmark_delete() {
     __shmark_setup_envvars || return 1
 
-    if [ $# -eq 0 ]; then
-        echo >&2 "Error: The 'delete' action requires an argument."
-        _shmark_usage
-        return $?
+    local idx dir
+    local msg=":"
+    local force=0   # prompt for confirmation by default
+
+    if [ $# -gt 0 ]; then
+        if [ "$1" == "-f" ]; then
+            force=1
+            shift
+        fi
     fi
+
+    if [ $# -eq 0 ]; then
+        # Default to current directory if no arg
+        dir=${PWD/#$HOME/\~} # HOME is replaced with tilde in bookmarks file
+        idx="$(__shmark_get_list_index_from_directory $dir)"
+        msg=" for current directory${msg}"
+    elif [[ "$1" =~ ^[1-9][0-9]*$ ]]; then
+        idx=$1
+        dir="$(__shmark_get_directory_from_list_index $1)"
+    else
+        dir=${1/#$HOME/\~} # HOME is replaced with tilde in bookmarks file
+        idx="$(__shmark_get_list_index_from_directory $dir)"
+    fi
+
+    msg="Delete bookmark${msg}"$'\n'"  '${idx}) ${dir}'?"
+
+    if [[ $force -ne 1 ]]; then
+        read -p "$msg"$'\n'"[y/N] " choice
+        case $choice in
+            [Yy])
+                :
+                ;;
+            *)
+                echo >&2 "Canceling..."
+                return 1
+                ;;
+        esac
+        #echo >&2 "Continuing..."   # DEBUG
+    fi
+    #return 0                       # DEBUG: stop before deleting
 
     local delete_msg="${delete_msg:-Bookmark deleted.}"
     local should_report_failure="${should_report_failure:-1}"
-    local line_num=$(__shmark_get_line_number "$1")
+    local line_num=$(__shmark_get_line_number "$dir")
     local bookmark
     if [[ "$line_num" =~ ^[1-9][0-9]*$ ]]; then
         cp -p ${SHMARK_FILE}{,.bak}
@@ -1061,7 +1105,7 @@ __shmark_prepare_new_bookmark() {
     # bookmark is deleted, it is returned via STDOUT.
     local delete_msg="Old bookmark deleted."
     local should_report_failure=0
-    local bookmark=$(_shmark_delete "$curdir") || true  # continue regardless
+    local bookmark=$(_shmark_delete -f "$curdir") || true  # continue regardless
 
     if [[ -z "$bookmark" ]]; then
         # New bookmark:
