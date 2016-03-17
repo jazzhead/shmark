@@ -142,22 +142,24 @@ Usage: shmark [-hV] [-f bookmark_file] [-#] [action] [bookmark|category]
 Actions:
     add|a [CATEGORY]
     append|app [CATEGORY]
+    cat
     cd|go [BOOKMARK]
     cd|go [NUMBER]
-    chcat|cc CATEGORY BOOKMARK
-    chcat|cc CATEGORY NUMBER
-    del|rm BOOKMARK
-    del|rm NUMBER
+    chcat|cc [-f] CATEGORY [BOOKMARK]
+    chcat|cc [-f] CATEGORY [NUMBER]
+    del|rm [-f] [BOOKMARK]
+    del|rm [-f] [NUMBER]
     edit|ed
     env
-    help
+    help [ACTION]
+    index|idx
     insert|ins NUMBER
-    list|ls [-#]
-    listall|lsa [-#]
+    list|ls [-#] [CATEGORY]
+    listall|lsa [-#] [CATEGORY]
     listcat|lsc
     listdir|lsd
     listunsort|lsus
-    move|mv FROM_POSITION TO_POSITION
+    move|mv [-f] [FROM_POSITION] TO_POSITION
     print
     shorthelp
     undo
