@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2016-03-16 Last modified
+# @date    2016-03-17 Last modified
 # @date    2014-01-18 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -264,7 +264,7 @@ _shmark_actions_help() {
         can append to specific categories rather than only the last
         listed category.
 
-    list|ls [-#]
+    list|ls [-#] [CATEGORY]
         Show a list of saved bookmarks. Bookmarks are listed by category
         and are prefixed by their list index number. (Note that the list
         index number is not the same as the line number in the actual
@@ -279,7 +279,10 @@ _shmark_actions_help() {
 
             shmark list -5
 
-    listall|lsa [-#]
+        Supply a CATEGORY argument to list only bookmarks that have been
+        tagged with that category.
+
+    listall|lsa [-#] [CATEGORY]
         Like 'list', but include uncategorized bookmarks. Uncategorized
         bookmarks are listed after all other categories using a default
         category, which is "MISCELLANEOUS" unless customized by setting
@@ -1014,27 +1017,54 @@ _shmark_list() {
     #unset SHMARK_DEFAULT_CATEGORY  # DEBUG 'set -o nounset (set -u)'
     __shmark_setup_envvars || return 1
 
-    local max=${1:--0}
+    # Argument defaults; don't alter here; will be overridden if necessary
+    local max="-0"         # if > 0 (ignoring - prefix), max number of bookmarks
+    local category_arg=""
+    local category_lines=0 # if > 0, max number of matching category bookmarks
+
+    # Process optional args: max list count, category
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -[1-9]*)    # max list count
+                if [[ "$1" =~ ^-[1-9][0-9]*$ ]]; then
+                    # looks like a max list count argument
+                    max=$1
+                else
+                    # maybe it's a category that begins with a dash and num
+                    category_arg="$1"
+                fi
+                shift
+                ;;
+            *)          # category
+                category_arg="$1"
+                break
+                ;;
+        esac
+    done
+
+    # If both arguments are given, special handling is required
+    if [[ "$max" != "-0" ]] && [[ -n "$category_arg" ]]; then
+        category_lines=${max#-} # max bookmarks to print for matching category
+        max="-0"       # reset so that all bookmarks are indexed and formatted
+    fi
+
     local listall=${listall:-0}     # inherit from calling function
     local dir_only=${dir_only:-0}   # inherit from calling function
     local i=1
-    local n category result escaped_category list_items width
     local missing_category=0
     local include_blank_categories=1
+    local n category result escaped_category list_items width
 
     [[ -s "$SHMARK_FILE" ]] || return
-
-    if [[ ! "$max" =~ ^-[0-9]+$ ]]; then
-        echo >&2 "Error: The 'list' action takes an optional -NUM argument."
-        _shmark_usage
-        return $?
-    fi
 
     max=${max#-} # don't need the dash anymore; just the integer
 
     # Get the number of digits in the last line number:
     width=$( echo $( wc -l < "$SHMARK_FILE" ) )
     width=${#width}
+
+    local listing=""
+    local should_continue=1
 
     while read -r category; do
         if [[ -z "$category" ]]; then
@@ -1044,34 +1074,71 @@ _shmark_list() {
         fi
         escaped_category=$(sed -E 's/[]\.*+?$|(){}[^-]/\\&/g' <<< "$category")
         n=$(grep -c "^$escaped_category" "$SHMARK_FILE") # no. matching lines
-        [ $dir_only -eq 1 ] || echo "$category"
+        [ $dir_only -eq 1 ] || listing+="${category}"$'\n'
         list_items=$(__shmark_format_list_items $dir_only $i $width \
             "$category")
         i=$(( i + n )) # the next list position
         if [ $dir_only -eq 0 ]; then
-            __shmark_wrap_list_items "$max" $i $n $width "$list_items" \
-                || return 0  # override non-zero returned from function
+            listing+=$(
+                __shmark_wrap_list_items "$max" $i $n $width "$list_items"
+            )$'\n' || { should_continue=0; break; }
         else
-            echo "$list_items"
+            listing+="$list_items"$'\n'
         fi
     done <<< "$(_shmark_listcat)"
 
     # Now add any uncategorized bookmarks using a default category
-    if [ $missing_category -eq 1 ]; then
+    if [ $missing_category -eq 1 ] && [ $should_continue -eq 1 ]; then
         if [ $listall -eq 1 ] || [ $dir_only -eq 1 ]; then
             category=""
             n=$(grep -c "^[|]" "$SHMARK_FILE") # no. matching lines
-            [ $dir_only -eq 1 ] || echo "$SHMARK_DEFAULT_CATEGORY"
+            [ $dir_only -eq 1 ] || listing+="$SHMARK_DEFAULT_CATEGORY"$'\n'
             list_items=$(__shmark_format_list_items $dir_only $i $width \
                 "$category")
             i=$(( i + n )) # the next list position
             if [ $dir_only -eq 0 ]; then
-                __shmark_wrap_list_items "$max" $i $n $width "$list_items" \
-                    || return 0  # override non-zero returned from function
+                listing+=$(
+                    __shmark_wrap_list_items "$max" $i $n $width "$list_items"
+                )
             else
-                echo "$list_items"
+                listing+="$list_items"$'\n'
             fi
         fi
+    fi
+
+    # Output result
+    if [[ -z "$category_arg" ]]; then
+        echo "$(echo "$listing")" # double echo to chomp trailing whitespace
+    else
+        local line
+        local line_count=0
+        local should_print=0
+        while IFS= read -r line; do
+            if egrep -q "^$category_arg" <<< "$line"; then
+                if [[ $category_lines -gt 0 ]] \
+                        && [[ $line_count -lt $category_lines ]]; then
+                    echo "$line"    # a matching category
+                elif [[ $category_lines -eq 0 ]]; then
+                    echo "$line"
+                fi
+                should_print=1
+                continue        # to next line
+            fi
+            if [[ $should_print -eq 1 ]] \
+                    && egrep -q '^[^ ]|^$' <<< "$line"; then
+                should_print=0  # skip non-matching category and blank lines
+                continue        # to next line
+            fi
+            if [[ $should_print -eq 1 ]]; then
+                if [[ $category_lines -gt 0 ]] \
+                        && [[ $line_count -lt $category_lines ]]; then
+                    echo "$line"    # a bookmark in the category
+                    (( line_count++ ))
+                elif [[ $category_lines -eq 0 ]]; then
+                    echo "$line"
+                fi
+            fi
+        done <<< "$listing"
     fi
 }
 
@@ -1373,7 +1440,7 @@ __shmark_wrap_list_items() {
             __shmark_wrap_long_line 80 '/' "$indent" "$line"
         done <<< "$(head -${h} <<< "$list_items")"
         #echo >&2 "DEBUG: exiting..."
-        return 1 # not an error, but signal caller to exit
+        return 1 # not an error, but signal caller to exit/break
     fi
     #echo >&2 "DEBUG: --- list items ($n):"
     while IFS= read -r line; do

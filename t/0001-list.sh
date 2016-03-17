@@ -6,7 +6,7 @@ set -o pipefail # Return non-zero status if any piped commands fail
 #
 # Tests for shmark
 #
-# @date    2014-05-23 Last modified
+# @date    2016-03-17 Last modified
 # @date    2014-01-23 First version
 # @author  Steve Wheeler
 #
@@ -32,14 +32,31 @@ unset ${!SHMARK_@}
 
 # === MAIN ===
 
-plan_tests 1
+plan_tests 3
 
-EXPECTED=$(cat "data/expected/${PROGNAME}.txt")
+# 1
+EXPECTED=$(cat "data/expected/${PROGNAME}/001.txt")
 RESULT=$(shmark -f "data/bookmarks-02.txt" list)
 while IFS= read -r line; do
     diag "$line"
 done <<< "$RESULT"
 is "$RESULT" "$EXPECTED" "shmark list"
+
+# 2
+EXPECTED=$(cat "data/expected/${PROGNAME}/002.txt")
+RESULT=$(shmark -f "data/bookmarks-02.txt" list @N)
+while IFS= read -r line; do
+    diag "$line"
+done <<< "$RESULT"
+is "$RESULT" "$EXPECTED" "shmark list CATEGORY"
+
+# 3
+EXPECTED=$(cat "data/expected/${PROGNAME}/003.txt")
+RESULT=$(shmark -f "data/bookmarks-02.txt" list -2 @N)
+while IFS= read -r line; do
+    diag "$line"
+done <<< "$RESULT"
+is "$RESULT" "$EXPECTED" "shmark list -2 CATEGORY"
 
 # === END ===
 

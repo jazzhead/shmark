@@ -1,0 +1,3 @@
+@NEXT
+   3) ~/Desktop/test.noindex/grault
+   4) ~/Desktop/test.noindex/qux
