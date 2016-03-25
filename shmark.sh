@@ -631,7 +631,7 @@ _shmark_cat() {
     __shmark_setup_envvars || return 1
     local line_num=$(__shmark_get_line_number ${PWD/#$HOME/\~})
     if [[ -n "$line_num" ]]; then
-        awk -F\| 'NR=='$line_num' {print $1}' "$SHMARK_FILE"
+        __shmark_get_category_from_line_number "$line_num"
     fi
 }
 
@@ -703,7 +703,7 @@ _shmark_insert() {
     __shmark_validate_num "$line_num" "$default_errmsg" || return $?
 
     # Need category of bookmark currently occupying target list position
-    local category=$(awk -F\| 'NR=='$line_num' {print $1}' "$SHMARK_FILE")
+    local category=$(__shmark_get_category_from_line_number $line_num)
     local curdir=${PWD/#$HOME/\~}     # Replace home directory with tilde
 
     # If there is already an existing bookmark for the current directory,
@@ -853,7 +853,7 @@ _shmark_move() {
     local directory=${bookmark%%|*} # just so we can report it
 
     # Need category of bookmark currently occupying target list position
-    local category=$(awk -F\| 'NR=='$to_line_num' {print $1}' "$SHMARK_FILE")
+    local category=$(__shmark_get_category_from_line_number $to_line_num)
 
     # Update bookmark with new category:
     bookmark="${category}|${bookmark}"
@@ -1532,6 +1532,19 @@ __shmark_get_line_number() {
         dir=${1/#$HOME/\~} # bookmarks file uses tildes for HOME
     fi
     fgrep -n -m1 "|${dir}|" "$SHMARK_FILE" | cut -d: -f1
+}
+
+##
+# @param  (integer) Bookmark line number in bookmarks file
+# @return (string)  Category for bookmark at given line number
+__shmark_get_category_from_line_number() {
+    if [ $# -ne 1 ]; then
+        echo >&2 "Error: '$FUNCNAME()' requires an argument."
+        echo >&2 "Usage: $FUNCNAME BOOKMARK_LINE_NUMBER(int)"
+        return 1
+    fi
+    local line_num=$1
+    awk -F\| 'NR=='$line_num' {print $1}' "$SHMARK_FILE"
 }
 
 ##
