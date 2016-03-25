@@ -33,7 +33,7 @@
 #
 ##############################################################################
 #
-# @date    2016-03-17 Last modified
+# @date    2016-03-24 Last modified
 # @date    2014-01-18 First version
 # @version @@VERSION@@
 # @author  Steve Wheeler
@@ -368,6 +368,9 @@ ___EndVersion___
 shmark() {
     #echo >&2 "DEBUG: ${FUNCNAME}(): running..."
 
+    local retval
+    local shmark_file_orig="${SHMARK_FILE:=}" # so it can be reset after -f flag
+
     # Process options
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -378,7 +381,9 @@ shmark() {
                     echo >&2 "Error: Bad option: $1"
                     _shmark_usage
                 fi
-                return $?
+                retval=$?
+                __shmark_reset_shmark_file "$shmark_file_orig"
+                return $retval
                 ;;
             '-#')
                 printf >&2 "%s\n" \
@@ -388,7 +393,9 @@ shmark() {
                     "    shmark -2" \
                     ""
                 _shmark_usage
-                return $?
+                retval=$?
+                __shmark_reset_shmark_file "$shmark_file_orig"
+                return $retval
                 ;;
             -f)
                 shift
@@ -408,20 +415,28 @@ shmark() {
                 ;;
             -h|--help)
                 _shmark_shorthelp
-                return $?
+                retval=$?
+                __shmark_reset_shmark_file "$shmark_file_orig"
+                return $retval
                 ;;
             -V|--version)
                 _shmark_version
-                return $?
+                retval=$?
+                __shmark_reset_shmark_file "$shmark_file_orig"
+                return $retval
                 ;;
             -\?)
                 _shmark_usage
-                return $?
+                retval=$?
+                __shmark_reset_shmark_file "$shmark_file_orig"
+                return $retval
                 ;;
             -*)
                 echo >&2 "Error: Bad option: $1"
                 _shmark_usage
-                return $?
+                retval=$?
+                __shmark_reset_shmark_file "$shmark_file_orig"
+                return $retval
                 ;;
             *) # No more options; stop loop
                 break
@@ -437,7 +452,9 @@ shmark() {
     if [ -z "$action" ]; then
         echo >&2 "Error: An 'action' argument is required."
         _shmark_usage
-        return $?
+        retval=$?
+        __shmark_reset_shmark_file "$shmark_file_orig"
+        return $retval
     fi
 
     # Process actions
@@ -481,13 +498,17 @@ shmark() {
                         echo "$line"    # the action help
                     fi
                 done <<< "$(_shmark_actions_help)"
-                return $?
+                retval=$?
+                __shmark_reset_shmark_file "$shmark_file_orig"
+                return $retval
             fi
             # If STDOUT is to a terminal (TTY), then try to pipe
             # the output to the PAGER (less by default):
             if [ -t 1 ]; then
                 if which "${PAGER:-less}" >/dev/null 2>&1; then
-                    _shmark_help | "${PAGER:-less}" && return 0
+                    _shmark_help | "${PAGER:-less}" \
+                        && __shmark_reset_shmark_file "$shmark_file_orig" \
+                        && return 0
                 fi
             fi
             # Fallback to STDOUT for redirection or pipes:
@@ -496,9 +517,15 @@ shmark() {
         *)
             echo >&2 "Error: Unknown action: $action"
             _shmark_usage
-            return $?
+            retval=$?
+            __shmark_reset_shmark_file "$shmark_file_orig"
+            return $retval
             ;;
     esac
+    retval=$?
+
+    __shmark_reset_shmark_file "$shmark_file_orig"
+    return $retval
 }
 
 
@@ -1271,6 +1298,16 @@ __shmark_setup_envvars() {
     : ${SHMARK_DEFAULT_CATEGORY:=MISCELLANEOUS}
 
     return 0
+}
+
+##
+# Reset SHMARK_FILE if -f flag was used
+#
+__shmark_reset_shmark_file() {
+    local shmark_file_orig="$1"
+    if [[ "$SHMARK_FILE" != "$shmark_file_orig" ]]; then
+        SHMARK_FILE="$shmark_file_orig"
+    fi
 }
 
 ##
