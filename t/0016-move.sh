@@ -6,7 +6,7 @@ set -o pipefail # Return non-zero status if any piped commands fail
 #
 # Tests for shmark
 #
-# @date    2016-03-16 Last modified
+# @date    2016-03-24 Last modified
 # @date    2014-01-24 First version
 # @author  Steve Wheeler
 #
@@ -69,10 +69,10 @@ diag "Group A"
 #diag "-----------------------------------"
 
 EXPECTED_FILE="${EXPECTED_TMPL/:::/a01}"
-tap_move 2 1
+tap_move 2 1 " (move up one to first bookmark)"
 
 EXPECTED_FILE="${EXPECTED_TMPL/:::/a02}"
-tap_move 1 4
+tap_move 1 4 " (move down, across categories)"
 
 EXPECTED_FILE="${EXPECTED_TMPL/:::/a03}"
 tap_move 3 12 " (target last position, move by appending)"
@@ -81,10 +81,10 @@ EXPECTED_FILE="${EXPECTED_TMPL/:::/a04}"
 tap_move 11 13 " (append to end of list by specifying nonexistent line)"
 
 EXPECTED_FILE="${EXPECTED_TMPL/:::/a05}"
-tap_move 12 5 " (insert as first line in file)"
+tap_move 12 1 " (insert as first line in file)"
 
 EXPECTED_FILE="${EXPECTED_TMPL/:::/a06}"
-tap_move 5 12 " (move/append back to list end by targetting last position)"
+tap_move 1 12 " (move/append back to list end by targetting last position)"
 
 EXPECTED_FILE="${EXPECTED_TMPL/:::/a07}"
 tap_move 2 1 " (move up one, across categories)"
@@ -109,13 +109,13 @@ diag "Group B"
 #diag "-----------------------------------"
 
 EXPECTED_FILE="${EXPECTED_TMPL/:::/b01}"
-tap_move 2 1
+tap_move 2 1 " (move up one to first bookmark)"
 
 EXPECTED_FILE="${EXPECTED_TMPL/:::/b02}"
-tap_move 1 4
+tap_move 1 4 " (move down, across categories)"
 
 EXPECTED_FILE="${EXPECTED_TMPL/:::/b03}"
-tap_move 3 5 " (target bookmark at last line of file, move by appending)"
+tap_move 3 5
 
 EXPECTED_FILE="${EXPECTED_TMPL/:::/b04}"
 tap_move 4 12 " (target last list position, move by appending)"
@@ -124,10 +124,10 @@ EXPECTED_FILE="${EXPECTED_TMPL/:::/b05}"
 tap_move 11 13 " (append to end of list by specifying nonexistent line)"
 
 EXPECTED_FILE="${EXPECTED_TMPL/:::/b06}"
-tap_move 12 5 " (insert as first line in file)"
+tap_move 12 1 " (insert as first line in file)"
 
 EXPECTED_FILE="${EXPECTED_TMPL/:::/b07}"
-tap_move 5 12 " (move/append back to list end by targetting last position)"
+tap_move 1 12 " (move/append back to list end by targetting last position)"
 
 EXPECTED_FILE="${EXPECTED_TMPL/:::/b08}"
 tap_move 2 1 " (move up one, across categories)"

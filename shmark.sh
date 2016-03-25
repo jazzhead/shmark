@@ -592,6 +592,8 @@ _shmark_cd() {
 ##
 # Add a directory bookmark to the top of a category.
 #
+# Bookmarks file is sorted by category after adding bookmark.
+#
 # @param  (string) Optional category for bookmark
 # @return Exit status: 0=true, >0=false
 _shmark_add() {
@@ -603,11 +605,14 @@ _shmark_add() {
     [[ -z "$bookmark" ]] && return 1
 
     printf '%s\n' 0a "$bookmark" . w | ed -s "$SHMARK_FILE"
+    __shmark_sort_bookmark_file_by_category
     echo >&2 "Bookmark added for '$curdir'."
 }
 
 ##
 # Append a directory bookmark to the bottom of a category.
+#
+# Bookmarks file is sorted by category after appending bookmark.
 #
 # @param  (string) Optional category for bookmark
 # @return Exit status: 0=true, >0=false
@@ -620,6 +625,7 @@ _shmark_append() {
     [[ -z "$bookmark" ]] && return 1
 
     echo "$bookmark" >> "$SHMARK_FILE"
+    __shmark_sort_bookmark_file_by_category
     echo >&2 "Bookmark appended for '$curdir'."
 }
 
@@ -646,6 +652,8 @@ _shmark_index() {
 
 ##
 # Insert a directory bookmark at a specific list position.
+#
+# Bookmarks file is sorted by category after inserting bookmark.
 #
 # @param  (integer) List position for insertion
 # @return Exit status: 0=true, >0=false
@@ -740,11 +748,14 @@ _shmark_insert() {
     [[ -z "$ed_cmd" ]] && ed_cmd="${line_num}i"
 
     printf '%s\n' "$ed_cmd" "$bookmark" . w | ed -s "$SHMARK_FILE"
+    __shmark_sort_bookmark_file_by_category
     echo >&2 "Bookmark for '$curdir' inserted into bookmarks file."
 }
 
 ##
 # Move a directory bookmark from one list position to another.
+#
+# Bookmarks file is sorted by category after moving bookmark.
 #
 # @param $1 (integer) List position of bookmark to move
 # @param $2 (integer) Target list position to move the bookmark
@@ -828,9 +839,10 @@ _shmark_move() {
         to_list_pos=$line_total
         # The 'ed' command for appending (`a`) after the last line (`$`).
         ed_cmd='$a'
+        #echo >&2 "[debug] append as last line because of target list position"
     fi
 
-    # Find out the line numbers in the bookmarks file for the bookmarka at
+    # Find out the line numbers in the bookmarks file for the bookmarks at
     # these list positions:
     from_line_num=$(__shmark_get_line_number "$from_list_pos")
     to_line_num=$(__shmark_get_line_number "$to_list_pos")
@@ -839,10 +851,14 @@ _shmark_move() {
     __shmark_validate_num "$from_line_num" "$errmsg" || return $?
     __shmark_validate_num "$to_line_num" "$errmsg" || return $?
 
+    #echo >&2 "[debug] from_line_num: $from_line_num"
+    #echo >&2 "[debug] to_line_num:   $to_line_num"
+
     # If the target line number is greater than or equal to the total lines in
     # the file, that means append the new bookmark as the very last line.
     if [ $to_line_num -ge $line_total ]; then
         ed_cmd='$a'
+        #echo >&2 "[debug] append as last line because of target line number"
     fi
 
     # Get existing bookmark w/o the category (fields 2-4):
@@ -864,11 +880,13 @@ _shmark_move() {
     _shmark_delete -f "$from_list_pos" >/dev/null
 
     # If we don't have an 'ed' command yet, that means we're inserting:
-    [[ -z "$ed_cmd" ]] && ed_cmd="${to_line_num}i"
+    [[ -z "$ed_cmd" ]] && ed_cmd="${to_line_num}i" #\
+        #&& echo >&2 "DEBUG: inserting at line $to_line_num"
 
     #echo >&2 "[debug] ed_cmd = $ed_cmd"
 
     printf '%s\n' "$ed_cmd" "$bookmark" . w | ed -s "$SHMARK_FILE"
+    __shmark_sort_bookmark_file_by_category
     echo >&2 "Bookmark for '$directory' moved."
 }
 
@@ -953,6 +971,8 @@ _shmark_delete() {
 ##
 # Change the category of a bookmark.
 #
+# Bookmarks file is sorted by category after changing category.
+#
 # @param $1 (string)  Category to use
 # @param $2 (str|int) Bookmarked directory path or its list position
 # @return   Exit status: 0=true, >0=false
@@ -1026,10 +1046,17 @@ _shmark_chcat() {
     bookmark=$(sed $line_num'q;d' "$SHMARK_FILE")   # get existing bookmark
     bookmark=$(__shmark_update_category "$bookmark" "$category") # update it
     __shmark_replace_line $line_num "$bookmark"     # replace it in the file
+    __shmark_sort_bookmark_file_by_category         # sort file by category
 
     return 0
 }
 
+##
+# Edit the bookmarks file in the default editor
+#
+# Prompt to sort file after editing.
+#
+# @return   Exit status: 0=true, >0=false
 _shmark_edit() {
     __shmark_setup_envvars || return 1
 
@@ -1037,6 +1064,18 @@ _shmark_edit() {
     local shortpath=${SHMARK_FILE/#$HOME/\~}  # Replace home dir with tilde
     echo >&2 "Editing bookmarks file ($shortpath)..."
     $editor "$SHMARK_FILE"
+
+    msg="The bookmarks file needs to be sorted by category. Continue with sort?"
+    read -p "$msg"$'\n'"[Y/n] " choice
+    case $choice in
+        [Nn])
+            echo >&2 "Canceling sort..."
+            return 1
+            ;;
+        *)      # sort by default
+            __shmark_sort_bookmark_file_by_category
+            ;;
+        esac
 }
 
 _shmark_list() {
@@ -1308,6 +1347,24 @@ __shmark_reset_shmark_file() {
     if [[ "$SHMARK_FILE" != "$shmark_file_orig" ]]; then
         SHMARK_FILE="$shmark_file_orig"
     fi
+}
+
+##
+# Sort the bookmarks file by category only.
+#
+# The bookmarked directories are left unsorted within their categories.
+# Uncategorized bookmarks are kept at the bottom of the file.
+#
+# The bookmarks file is sorted this way primarily to enable the 'move'
+# function to work correctly.
+#
+__shmark_sort_bookmark_file_by_category() {
+    cp -p ${SHMARK_FILE}{,.bak}
+    LC_ALL=C grep '^[^|]' "$SHMARK_FILE" |
+             sort -t\| -k1,1 --stable >  "${SHMARK_FILE}".tmp
+    LC_ALL=C grep '^|' "$SHMARK_FILE" |
+             sort -t\| -k1,1 --stable >> "${SHMARK_FILE}".tmp
+    mv -f "${SHMARK_FILE}"{.tmp,}
 }
 
 ##

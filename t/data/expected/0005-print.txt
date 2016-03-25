@@ -1,12 +1,12 @@
- 1) @PENDING|~/Desktop/test.noindex/corge|2014-01-18 17:51:21|2014-01-18 17:51:21
- 2) @PENDING|~/Desktop/test.noindex/baz|2014-01-16 19:00:35|2014-01-16 19:00:35
- 3) @CURRENT|~/Desktop/test.noindex/foo|2014-01-17 19:12:40|2014-01-17 19:12:40
- 4) |~/Desktop/test.noindex/garply|2014-01-18 17:51:41|2014-01-18 17:51:41
- 5) @NEXT|~/Desktop/test.noindex/grault|2014-01-14 16:51:53|2014-01-14 16:51:53
- 6) @CURRENT|~/Desktop/test.noindex/quux|2014-01-18 17:51:49|2014-01-18 17:51:49
- 7) @NEXT|~/Desktop/test.noindex/qux|2014-01-13 15:52:04|2014-01-13 15:52:04
- 8) |~/Desktop/test.noindex/foo/baz|2014-01-18 13:32:14|2014-01-18 13:32:14
- 9) |~/Desktop/test.noindex/foo/qux|2014-01-18 13:32:14|2014-01-18 13:32:14
-10) |~/Desktop/test.noindex/foo/quux|2014-01-18 13:32:14|2014-01-18 13:32:14
-11) |~/Desktop/test.noindex/foo/bar|2014-01-18 13:32:14|2014-01-18 13:32:14
-12) @NEXT|~/Desktop/test.noindex/bar|2014-01-15 18:40:30|2014-01-15 18:40:30
+ 1) @CURRENT|~/Desktop/test.noindex/foo|2014-01-17 19:12:40|2014-01-17 19:12:40
+ 2) @CURRENT|~/Desktop/test.noindex/quux|2014-01-18 17:51:49|2014-01-18 17:51:49
+ 3) @NEXT|~/Desktop/test.noindex/grault|2014-01-14 16:51:53|2014-01-14 16:51:53
+ 4) @NEXT|~/Desktop/test.noindex/qux|2014-01-13 15:52:04|2014-01-13 15:52:04
+ 5) @NEXT|~/Desktop/test.noindex/bar|2014-01-15 18:40:30|2014-01-15 18:40:30
+ 6) @PENDING|~/Desktop/test.noindex/corge|2014-01-18 17:51:21|2014-01-18 17:51:21
+ 7) @PENDING|~/Desktop/test.noindex/baz|2014-01-16 19:00:35|2014-01-16 19:00:35
+ 8) |~/Desktop/test.noindex/garply|2014-01-18 17:51:41|2014-01-18 17:51:41
+ 9) |~/Desktop/test.noindex/foo/baz|2014-01-18 13:32:14|2014-01-18 13:32:14
+10) |~/Desktop/test.noindex/foo/qux|2014-01-18 13:32:14|2014-01-18 13:32:14
+11) |~/Desktop/test.noindex/foo/quux|2014-01-18 13:32:14|2014-01-18 13:32:14
+12) |~/Desktop/test.noindex/foo/bar|2014-01-18 13:32:14|2014-01-18 13:32:14

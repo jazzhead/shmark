@@ -1,12 +1,12 @@
-@NEXT|{ADDED_DIR}|YYYY-MM-DD hh:mm:ss|YYYY-MM-DD hh:mm:ss
-@PENDING|~/Desktop/test.noindex/corge|2014-01-18 17:51:21|2014-01-18 17:51:21
-@PENDING|~/Desktop/test.noindex/baz|2014-01-16 19:00:35|2014-01-16 19:00:35
 @CURRENT|~/Desktop/test.noindex/foo|2014-01-17 19:12:40|2014-01-17 19:12:40
-|~/Desktop/test.noindex/garply|2014-01-18 17:51:41|2014-01-18 17:51:41
-@NEXT|~/Desktop/test.noindex/grault|2014-01-14 16:51:53|2014-01-14 16:51:53
 @CURRENT|~/Desktop/test.noindex/quux|2014-01-18 17:51:49|2014-01-18 17:51:49
+@NEXT|{ADDED_DIR}|YYYY-MM-DD hh:mm:ss|YYYY-MM-DD hh:mm:ss
+@NEXT|~/Desktop/test.noindex/grault|2014-01-14 16:51:53|2014-01-14 16:51:53
 @NEXT|~/Desktop/test.noindex/bar|2014-01-15 18:40:30|2014-01-15 18:40:30
 @NEXT|~/Desktop/test.noindex/qux|2014-01-13 15:52:04|2014-01-13 15:52:04
+@PENDING|~/Desktop/test.noindex/corge|2014-01-18 17:51:21|2014-01-18 17:51:21
+@PENDING|~/Desktop/test.noindex/baz|2014-01-16 19:00:35|2014-01-16 19:00:35
+|~/Desktop/test.noindex/garply|2014-01-18 17:51:41|2014-01-18 17:51:41
 |~/Desktop/test.noindex/foo/baz|2014-01-18 13:32:14|2014-01-18 13:32:14
 |~/Desktop/test.noindex/foo/qux|2014-01-18 13:32:14|2014-01-18 13:32:14
 |~/Desktop/test.noindex/foo/quux|2014-01-18 13:32:14|2014-01-18 13:32:14
